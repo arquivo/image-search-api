@@ -1,0 +1,30 @@
+<!DOCTYPE web-app PUBLIC
+ "-//Sun Microsystems, Inc.//DTD Web Application 2.3//EN"
+ "http://java.sun.com/dtd/web-app_2_3.dtd" >
+
+<web-app>
+  <display-name>Archetype Created Web Application</display-name>
+  <servlet>
+  	<servlet-name>ImageSearchServlet</servlet-name>
+  	<display-name>ImageSearchServlet</display-name>
+  	<description>Image Search Servlet for Image Search API</description>
+  	<servlet-class>pt.arquivo.ImageSearchServlet</servlet-class>
+     <init-param>
+         <param-name>solrServer</param-name>
+         <param-value>http://p28.arquivo.pt:8983/solr/SAFE</param-value>
+         <description>Location to the SOLR collection</description>                
+     </init-param>
+     <init-param> 
+         <param-name>waybackHost</param-name>
+         <param-value>p28.arquivo.pt/wayback</param-value>
+         <description>Location to the wayback </description> 
+     </init-param>  	
+  </servlet>
+  <servlet-mapping>
+  	<servlet-name>ImageSearchServlet</servlet-name>
+  	<url-pattern>/imagesearch</url-pattern>
+  </servlet-mapping>
+  <welcome-file-list>
+    <welcome-file>index.jsp</welcome-file>
+  </welcome-file-list>
+</web-app>
