@@ -2,63 +2,35 @@ package pt.arquivo;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URL;
-import java.net.URLDecoder;
-import java.net.URLEncoder;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Base64;
 import java.util.Calendar;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.GregorianCalendar;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.Set;
 import java.util.TimeZone;
-import java.util.TreeSet;
-import java.util.HashSet;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-import javax.servlet.ServletException;
 import javax.servlet.ServletConfig;
+import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-
-import org.w3c.dom.*;
+import org.apache.solr.client.solrj.SolrClient;
+import org.apache.solr.client.solrj.SolrQuery;
+import org.apache.solr.client.solrj.SolrServerException;
+import org.apache.solr.client.solrj.impl.HttpSolrClient;
+import org.apache.solr.client.solrj.response.QueryResponse;
+import org.apache.solr.common.SolrDocument;
+import org.apache.solr.common.SolrDocumentList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParseException;
-
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
-import javax.xml.parsers.*;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.solr.client.solrj.SolrClient;
-import org.apache.solr.client.solrj.SolrQuery;
-import org.apache.solr.client.solrj.response.QueryResponse;
-import org.apache.solr.client.solrj.impl.HttpSolrClient;
-import org.apache.solr.client.solrj.SolrServerException;
-import org.apache.solr.common.SolrDocument;
-import org.apache.solr.common.SolrDocumentList;
-
-import java.util.Base64;
 
 /**
  * ImageSearch API Back-End. 
@@ -79,7 +51,7 @@ public class ImageSearchServlet extends HttpServlet {
 
 
 	private static final long serialVersionUID = 1L;
-	private static final Log LOG = LogFactory.getLog( ImageSearchServlet.class );  
+	private static final Logger LOG = LoggerFactory.getLogger( ImageSearchServlet.class );  
 	private static String collectionsHost = null;
 	private static String solrHost = null;
 	private static final SimpleDateFormat FORMAT = new SimpleDateFormat( "yyyyMMddHHmmss" );
@@ -124,13 +96,11 @@ public class ImageSearchServlet extends HttpServlet {
 	             ("http".equals(request.getScheme()) && request.getServerPort() == 80 || "https".equals(request.getScheme()) && request.getServerPort() == 443 ? "" : ":" + request.getServerPort() ) +
 	             request.getRequestURI() +
 	            (request.getQueryString() != null ? "?" + request.getQueryString() : "");		
-		LOG.info("[imagesearch request] : "+ requestURL);
+		LOG.debug("[imagesearch request] : "+ requestURL);
 		
 		response.addHeader("Access-Control-Allow-Origin", "*");
 		response.addHeader("Access-Control-Allow-Methods", "GET, HEAD");
 
-		Calendar DATE_END = currentDate( );
-		String dateEndString = FORMAT.format( DATE_END.getTime( ) );
 		int start = 0;
 		int limit = 50; /*Default number of results*/
 
@@ -170,8 +140,8 @@ public class ImageSearchServlet extends HttpServlet {
 		if( limit < 0 )
 			limit = 0;
 
-		if( limit > 2000 )
-			limit = 2000; //Max Number of Results 2000 in one request?
+		if( limit > 200 )
+			limit = 200; //Max Number of Results 200 in one request?
 
 		// date restriction   
 		String dateStart = request.getParameter( "from" );
@@ -191,7 +161,6 @@ public class ImageSearchServlet extends HttpServlet {
 				dOutputFormatTimestamp.setLenient( false );
 				DateFormat dOutputFormatYear = new SimpleDateFormat("yyyy");
 				dOutputFormatYear.setLenient( false );
-				String dateFinal = "";
 				if( tryParse( dOutputFormatTimestamp , dateStart )  ) {
 					Date dStart = dOutputFormatTimestamp.parse( dateStart );
 					dateStart = dOutputFormatTimestamp.format( dStart.getTime( ) );
@@ -272,7 +241,7 @@ public class ImageSearchServlet extends HttpServlet {
 		if( prettyPrintParameter != null && prettyPrintParameter.equals( "true" ) ) 
 			prettyOutput = true;
 
-		startTime = System.nanoTime( );
+		startTime = System.currentTimeMillis();
 		//execute the query    
 		try {
 			LOG.debug("Wayback HOST: " + collectionsHost);
@@ -341,7 +310,7 @@ public class ImageSearchServlet extends HttpServlet {
 			  String nextPage = requestURL.replaceAll("&offset=([^&]+)", "").concat("&offset="+offsetNextPage);
 			  String linkToMoreFields = requestURL.replaceAll("&more=([^&]+)", "").concat("&more="+MOREFIELDS);
 			
-			imgSearchResults = new ImageSearchResults(numFound,documents.size() ,responseSolr.getResults().getStart() ,linkToMoreFields,nextPage, previousPage, documents);
+			imgSearchResults = new ImageSearchResults(numFound,documents.size() ,responseSolr.getResults().getStart() ,linkToMoreFields,nextPage, previousPage, documents, prettyOutput);
 			if( request.getParameter( "debug" ) != null && request.getParameter( "debug" ).equals("on") ){
 				imgSearchResponse = new ImageSearchResponseDebug(responseSolr.getResponseHeader(),imgSearchResults);
 			}else{
@@ -351,8 +320,8 @@ public class ImageSearchServlet extends HttpServlet {
 			LOG.warn("Search Error", e);    	
 		}
 
-		endTime = System.nanoTime( );
-		duration = ( endTime - startTime );
+		endTime = System.currentTimeMillis();
+
 		try {
 			if( prettyOutput ){
 				Gson gson = new GsonBuilder().disableHtmlEscaping().setPrettyPrinting().create();
@@ -362,18 +331,29 @@ public class ImageSearchServlet extends HttpServlet {
 				Gson gson =  new GsonBuilder().disableHtmlEscaping().create();
 				jsonSolrResponse = gson.toJson(imgSearchResponse); 
 			}
-			//TODO:: callback option and setting jsonp content type in that case
-			response.setContentType( "application/json" ); //json
-
-			// Get the printwriter object from response to write the required json object to the output stream      
-			PrintWriter out = response.getWriter( );  
-			out.print( jsonSolrResponse );
-			out.flush( );
 
 		} catch ( JsonParseException e ) {
 			throw new ServletException( e );
 		}
-
+		//TODO:: callback option and setting jsonp content type in that case
+		if(request.getParameter("callback")!= null && !request.getParameter("callback").equals("") ){
+			jsonSolrResponse = request.getParameter("callback") + "(" + jsonSolrResponse + ");";
+			response.setContentType( "text/javascript" ); //jsonp
+		}
+		else{
+			response.setContentType( "application/json" ); //json
+		}
+		duration = ( endTime - startTime );
+	    String ipAddress = request.getHeader("X-FORWARDED-FOR");  
+        if (ipAddress == null) {  
+        	ipAddress = request.getRemoteAddr();  
+        }		
+		LOG.info("[ImageSearch API]"+"\t"+duration+"ms\t"+ipAddress+"\t"+requestURL);
+		
+		// Get the printwriter object from response to write the required json object to the output stream      
+		PrintWriter out = response.getWriter( );  
+		out.print( jsonSolrResponse );
+		out.flush( );
 	}
 
 
@@ -381,27 +361,6 @@ public class ImageSearchServlet extends HttpServlet {
 	/*************************************************************/
 	/********************* AUXILIARY METHODS *********************/
 	/************************************************************/
-
-	/**
-	 * Check if parameter url is URL
-	 * @param url
-	 * @return
-	 */
-	private static boolean urlValidator(String url){
-		Pattern URL_PATTERN = Pattern.compile("^.*? ?((https?:\\/\\/)?([a-zA-Z\\d][-\\w\\.]+)\\.([a-z\\.]{2,6})([-\\/\\w\\p{L}\\.~,;:%&=?+$#*]*)*\\/?) ?.*$");
-		return URL_PATTERN.matcher( url ).matches( );
-	}
-
-
-	/**
-	 * Check if str is defined
-	 * @param str
-	 * @return
-	 */
-	private static boolean isDefined( String str ) {
-		return str == null ? false : "".equals( str ) ? false : true;  
-	}
-
 
 
 	/**
@@ -427,7 +386,7 @@ public class ImageSearchServlet extends HttpServlet {
 	private static Boolean tryParse( DateFormat df, String s ) {
 		Boolean valid = false;
 		try {
-			Date d = df.parse( s );
+			df.parse( s );
 			valid = true;
 		} catch ( ParseException e ) {
 			valid = false;
@@ -435,22 +394,7 @@ public class ImageSearchServlet extends HttpServlet {
 		return valid;
 	}
 
-	/**
-	 * 
-	 * @param fields
-	 * @param fieldParam
-	 * @return
-	 */
-	private static boolean FieldExists( String[ ] fields, String fieldParam ) {
-		if( fields == null || fields.length == 0 )
-			return true;
 
-		for( String field : fields ) {
-			if( field.toUpperCase( ).equals( fieldParam.toUpperCase( ) ) )
-				return true;
-		}
-		return false;
-	}
 
 
 	/**

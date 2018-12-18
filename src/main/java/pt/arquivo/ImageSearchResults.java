@@ -8,6 +8,7 @@ import org.apache.solr.common.SolrDocumentList;
 public class ImageSearchResults {
 	String serviceName = "Arquivo.pt - image search service.";
 	String linkToService = "https://arquivo.pt/images.jsp";
+	String linkToDocumentation;
 	String linkToMoreFields = "";
 	String nextPage = "";
 	String previousPage = "";
@@ -29,9 +30,12 @@ public class ImageSearchResults {
 	
 	SolrDocumentList responseItems;
 	
-	public ImageSearchResults(long totalItems,int numberOfResponseItems, long offset, String linkToMoreFields, String nextPage, String previousPage, SolrDocumentList responseItems){
+	public ImageSearchResults(long totalItems,int numberOfResponseItems, long offset, String linkToMoreFields, String nextPage, String previousPage, SolrDocumentList responseItems, boolean documentation){
 		this.nextPage = nextPage;
 		this.previousPage = previousPage;
+		if(documentation){
+			linkToDocumentation = "https://github.com/arquivo/pwa-technologies/wiki/ImageSearch-API-v1-(beta)";
+		}
 		this.linkToMoreFields = linkToMoreFields;
 		this.totalItems = totalItems;
 		this.numberOfResponseItems = numberOfResponseItems;
