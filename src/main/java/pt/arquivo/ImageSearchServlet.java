@@ -31,6 +31,7 @@ import org.slf4j.LoggerFactory;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParseException;
+import org.apache.solr.client.solrj.util.ClientUtils;
 
 /**
  * ImageSearch API Back-End. 
@@ -233,7 +234,7 @@ public class ImageSearchServlet extends HttpServlet {
 	    	  flString += DEFAULT_FL_STRING;
 	      }
 	      if( request.getParameter( "siteSearch" ) != null ){
-	    	  fqStrings.add("pageURL:*" + request.getParameter( "siteSearch" )+"*");
+	    	  fqStrings.add("pageURL:*" + ClientUtils.escapeQueryChars(request.getParameter( "siteSearch" ))+"*");
 	      }	      
 		//Pretty print in output message 
 		String prettyPrintParameter = request.getParameter( "prettyPrint" );
