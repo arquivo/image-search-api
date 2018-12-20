@@ -22,7 +22,7 @@
   </servlet>
   <servlet-mapping>
   	<servlet-name>ImageSearchServlet</servlet-name>
-  	<url-pattern>/imagesearch</url-pattern>
+  	<url-pattern>/*</url-pattern>
   </servlet-mapping>
   <welcome-file-list>
     <welcome-file>imagesearch</welcome-file>
