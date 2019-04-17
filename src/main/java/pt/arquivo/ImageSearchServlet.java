@@ -393,6 +393,7 @@ public class ImageSearchServlet extends HttpServlet {
 					}																
 				}else if(word.toLowerCase().startsWith("safe:")){
 					LOG.debug("found safe:");
+					removeAnySafeFqString();					
 					String safeWord = word.replace("safe:", "");
 					if(! safeWord.toLowerCase().equals("off")){
 						fqStrings.add("safe:[0 TO 0.49]"); /*Default behaviour is to limit safe score from 0 -> 0.49; else show all images*/
@@ -422,6 +423,17 @@ public class ImageSearchServlet extends HttpServlet {
 			return String.join(" ", cleanWords);
 		}
 		else return q;
+	}
+
+
+	private void removeAnySafeFqString() {
+		for(int i=0;i<fqStrings.size();i++)
+		{
+		    if(fqStrings.get(i).startsWith("safe"))
+		    {
+		        fqStrings.remove(i);
+		    }
+		}		
 	}
 
 
