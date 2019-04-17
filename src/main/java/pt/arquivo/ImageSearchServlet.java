@@ -399,7 +399,7 @@ public class ImageSearchServlet extends HttpServlet {
 					}
 				}else if(word.toLowerCase().startsWith("size:")){
 					 LOG.debug("found size:");
-				      String sizeWord = word.replace("size;","").toLowerCase();
+				      String sizeWord = word.replace("size:","").toLowerCase();
 				      LOG.debug("size word: "+ sizeWord);
 				      if( !sizeWord.equals( "" ) ){
 				    	  if(sizeWord.equals("sm")){
