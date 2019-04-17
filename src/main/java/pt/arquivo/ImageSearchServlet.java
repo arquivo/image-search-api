@@ -371,13 +371,17 @@ public class ImageSearchServlet extends HttpServlet {
 
 
 	private String checkSpecialOperators() {
+		LOG.debug("checking special operators");
 		if( q.contains("site:") || q.contains("type:")|| q.contains("safe:") || q.contains("size:")  ){ /*query has a special operator we need to deal with it*/
+			LOG.debug("found special operator");
 			String[] words = q.split(" ");
 			ArrayList<String> cleanWords = new ArrayList<String>(); 
 			for ( String word : words) {
 				if(word.toLowerCase().startsWith("site:")){
+					LOG.debug("found site:");
 					fqStrings.add("pageURL:*" + ClientUtils.escapeQueryChars(word.replace("site:", "")) + "*");
 				}else if (word.toLowerCase().startsWith("type:")){
+					LOG.debug("found type:");
 					String typeWord = word.replace("type:", "");
 					if( !typeWord.equals( "" ) ){
 						if(typeWord.toLowerCase().equals("jpeg") || typeWord.toLowerCase().equals("jpg") ){
@@ -388,11 +392,13 @@ public class ImageSearchServlet extends HttpServlet {
 						}
 					}																
 				}else if(word.toLowerCase().startsWith("safe:")){
+					LOG.debug("found safe:");
 					String safeWord = word.replace("safe:", "");
 					if(! safeWord.toLowerCase().equals("off")){
 						fqStrings.add("safe:[0 TO 0.49]"); /*Default behaviour is to limit safe score from 0 -> 0.49; else show all images*/
 					}
 				}else if(word.toLowerCase().startsWith("size:")){
+					 LOG.debug("found size:");
 				      String sizeWord = word.replace("size;","").toLowerCase();
 				      if( !sizeWord.equals( "" ) ){
 				    	  if(sizeWord.equals("sm")){
@@ -405,6 +411,7 @@ public class ImageSearchServlet extends HttpServlet {
 				      }
 					
 				}else{
+					LOG.debug(" found clean word");
 					cleanWords.add(word);
 				}
 			}
