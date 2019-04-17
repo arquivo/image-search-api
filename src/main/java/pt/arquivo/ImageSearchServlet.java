@@ -400,12 +400,16 @@ public class ImageSearchServlet extends HttpServlet {
 				}else if(word.toLowerCase().startsWith("size:")){
 					 LOG.debug("found size:");
 				      String sizeWord = word.replace("size;","").toLowerCase();
+				      LOG.debug("size word: "+ sizeWord);
 				      if( !sizeWord.equals( "" ) ){
 				    	  if(sizeWord.equals("sm")){
+				    		  LOG.debug("sm");
 				    		  fqStrings.add("{!frange u=65536 }product(imgHeight,imgWidth)"); /*images up to 65536pixels² of area - i.e. max square size of 256x256px*/
 				    	  }else if(sizeWord.equals("md")){
+				    		  LOG.debug("md");
 				    		  fqStrings.add("{!frange l=65537 u=810000 }product(imgHeight,imgWidth)"); /*images between 65537pixels² of area , up to  810000px² of area - i.e. max square size of 900x900px*/ 
 				    	  }else if(sizeWord.equals("lg")){
+				    		  LOG.debug("lg");
 				    		  fqStrings.add("{!frange l=810001}product(imgHeight,imgWidth)"); /*images bigger than 810000px² of area*/
 				    	  }
 				      }
