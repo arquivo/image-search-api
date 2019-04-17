@@ -46,8 +46,7 @@ public class ImageSearchServlet extends HttpServlet {
 	 * 	Search the indexes Lucene, through the calls to the queryServers.
 	 *	Search by URL in CDX indexes, through the CDXServer API.
 	 *
-	 * Documentation: https://github.com/arquivo/pwa-technologies/wiki/APIs - Full-text search: TestSearch based Arquivo.pt API
-	 * (The code indentation isn't adequate. Consequence of the NutchWax structure)
+	 * Documentation: https://arquivo.pt/api - 
 	 */
 
 
@@ -59,6 +58,9 @@ public class ImageSearchServlet extends HttpServlet {
 	Calendar DATE_END = new GregorianCalendar( );
 	private static final String DEFAULT_FL_STRING = "imgSrc,imgMimeType,imgHeight,imgWidth,imgTstamp,imgTitle,imgAlt,pageURL,pageTstamp,pageTitle,collection";
 	private static final String MOREFIELDS = "imgThumbnailBase64,imgSrcURLDigest,imgDigest,pageProtocol,pageHost,pageImages,safe" ;
+	
+	private ArrayList<String> fqStrings;
+	private String q;
 
 	/**
 	 * HttpServlet init method.
@@ -90,7 +92,7 @@ public class ImageSearchServlet extends HttpServlet {
 	 */
 	public void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-
+		fqStrings = new ArrayList<String>();
 		LOG.debug("[doGet] query request from " + request.getRemoteAddr( ) );
 		String requestURL = request.getScheme() + "://" +
 	             request.getServerName() + 
@@ -112,21 +114,17 @@ public class ImageSearchServlet extends HttpServlet {
 		Object imgSearchResponse=null;
 		ImageSearchResults imgSearchResults=null;
 		String safeSearch = "";
-		
-		ArrayList<String> fqStrings = new ArrayList<String>();
 		String flString =""; /*limit response fields*/
 		String jsonSolrResponse="";
 
 		// get parameters from request
 		request.setCharacterEncoding("UTF-8");
-		StringBuilder queryString = new StringBuilder( );
-		String q = request.getParameter("q");
 
-		if ( q == null )
+		q = request.getParameter("q");
+
+		if ( q == null ){
 			q = "";
-
-		queryString.append( q );
-
+		}
 
 		// first hit to display
 		String startString = request.getParameter( "offset" );
@@ -235,7 +233,14 @@ public class ImageSearchServlet extends HttpServlet {
 	      }
 	      if( request.getParameter( "siteSearch" ) != null ){
 	    	  fqStrings.add("pageURL:*" + ClientUtils.escapeQueryChars(request.getParameter( "siteSearch" ))+"*");
-	      }	      
+	      }	
+	      
+	      /*Process operators such as site: type: and site: inside the q parameter*/
+	      /*Should we allow people to use those operators when calling the api e.g.   
+	       * /imagesearch?q=sapo%20site:sapo.pt%20type:jpeg instead of 
+	       * /imagesearch?q=sapo&siteSearch=sapo.pt&type=jpeg */
+	      q = checkSpecialOperators();
+	      
 		//Pretty print in output message 
 		String prettyPrintParameter = request.getParameter( "prettyPrint" );
 		boolean prettyOutput = false;
@@ -362,6 +367,51 @@ public class ImageSearchServlet extends HttpServlet {
 	/*************************************************************/
 	/********************* AUXILIARY METHODS *********************/
 	/************************************************************/
+
+
+
+	private String checkSpecialOperators() {
+		if( q.contains("site:") || q.contains("type:")|| q.contains("safe:") || q.contains("size:")  ){ /*query has a special operator we need to deal with it*/
+			String[] words = q.split(" ");
+			ArrayList<String> cleanWords = new ArrayList<String>(); 
+			for ( String word : words) {
+				if(word.toLowerCase().startsWith("site:")){
+					fqStrings.add("pageURL:*" + ClientUtils.escapeQueryChars(word.replace("site:", "")) + "*");
+				}else if (word.toLowerCase().startsWith("type:")){
+					String typeWord = word.replace("type:", "");
+					if( !typeWord.equals( "" ) ){
+						if(typeWord.toLowerCase().equals("jpeg") || typeWord.toLowerCase().equals("jpg") ){
+							fqStrings.add("imgMimeType:image/jpeg OR imgMimeType:image/jpg");
+						}
+						else{
+							fqStrings.add("imgMimeType: image/"+ typeWord);
+						}
+					}																
+				}else if(word.toLowerCase().startsWith("safe:")){
+					String safeWord = word.replace("safe:", "");
+					if(! safeWord.toLowerCase().equals("off")){
+						fqStrings.add("safe:[0 TO 0.49]"); /*Default behaviour is to limit safe score from 0 -> 0.49; else show all images*/
+					}
+				}else if(word.toLowerCase().startsWith("size:")){
+				      String sizeWord = word.replace("size;","").toLowerCase();
+				      if( !sizeWord.equals( "" ) ){
+				    	  if(sizeWord.equals("sm")){
+				    		  fqStrings.add("{!frange u=65536 }product(imgHeight,imgWidth)"); /*images up to 65536pixels² of area - i.e. max square size of 256x256px*/
+				    	  }else if(sizeWord.equals("md")){
+				    		  fqStrings.add("{!frange l=65537 u=810000 }product(imgHeight,imgWidth)"); /*images between 65537pixels² of area , up to  810000px² of area - i.e. max square size of 900x900px*/ 
+				    	  }else if(sizeWord.equals("lg")){
+				    		  fqStrings.add("{!frange l=810001}product(imgHeight,imgWidth)"); /*images bigger than 810000px² of area*/
+				    	  }
+				      }
+					
+				}else{
+					cleanWords.add(word);
+				}
+			}
+			return String.join(" ", cleanWords);
+		}
+		else return q;
+	}
 
 
 	/**
