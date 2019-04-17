@@ -392,9 +392,11 @@ public class ImageSearchServlet extends HttpServlet {
 						}
 					}																
 				}else if(word.toLowerCase().startsWith("safe:")){
-					LOG.debug("found safe:");
-					removeAnySafeFqString();					
+					LOG.debug("found safe:");							
 					String safeWord = word.replace("safe:", "");
+					if(safeWord.toLowerCase().equals("off") || safeWord.toLowerCase().equals("on")){
+						removeAnySafeFqString();
+					}							
 					if(! safeWord.toLowerCase().equals("off")){
 						fqStrings.add("safe:[0 TO 0.49]"); /*Default behaviour is to limit safe score from 0 -> 0.49; else show all images*/
 					}
