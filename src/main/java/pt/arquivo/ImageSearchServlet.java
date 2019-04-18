@@ -254,6 +254,11 @@ public class ImageSearchServlet extends HttpServlet {
 			LOG.debug("SOLR HOST: " + solrHost);
 			SolrClient solr = new HttpSolrClient.Builder(solrHost).build();
 			SolrQuery solrQuery = new SolrQuery();
+			
+			if(q.trim().isEmpty()){
+				q = "*:*";
+			}
+			
 			solrQuery.setQuery(q);
 			LOG.debug("FilterQuery Strings:" + fqStrings);
 			
