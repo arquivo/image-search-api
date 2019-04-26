@@ -259,6 +259,8 @@ public class ImageSearchServlet extends HttpServlet {
 				q = "*:*";
 			}
 			
+			q = setDummySpamFilter(q);
+			
 			solrQuery.setQuery(q);
 			LOG.debug("FilterQuery Strings:" + fqStrings);
 			
@@ -367,6 +369,21 @@ public class ImageSearchServlet extends HttpServlet {
 		out.flush( );
 	}
 
+
+	/*Method to downrank manually curated spam domains*/
+	private String setDummySpamFilter(String q) {
+		ArrayList<String> spamDomains = new ArrayList<String>();
+		spamDomains.add("venda.nuroa.pt");
+		spamDomains.add("autobazar.eu");
+		spamDomains.add("adoos.pt");
+		spamDomains.add("anunico.com.pt");
+		spamDomains.add("atalho.com");
+		spamDomains.add("blidoo.pt");
+		for(String spamDomain:spamDomains){
+			q= q + " pageHost:*"+spamDomain+"^-50";
+		}
+		return q;
+	}
 
 
 	/*************************************************************/
