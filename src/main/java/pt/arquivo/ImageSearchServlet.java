@@ -62,6 +62,8 @@ public class ImageSearchServlet extends HttpServlet {
 	private static final String DEFAULT_FL_STRING = "imgSrc,imgMimeType,imgHeight,imgWidth,imgTstamp,imgTitle,imgAlt,pageURL,pageTstamp,pageTitle,collection";
 	private static final String MOREFIELDS = "imgThumbnailBase64,imgSrcURLDigest,imgDigest,pageProtocol,pageHost,pageImages,safe" ;
 	
+	private List<String> spamDomains;
+	
 	private ArrayList<String> fqStrings;
 	private String q;
 
@@ -83,7 +85,13 @@ public class ImageSearchServlet extends HttpServlet {
 			if(solrHost == null){
 				LOG.debug("[init] Null waybackHost parameter in Web.xml");				
 			}
-
+			try {
+				spamDomains = FileUtils.readLines(new File("spam.txt"), "utf-8");
+			} catch (IOException e) {				
+				e.printStackTrace();
+				throw new ServletException("ERROR Loading spam domains", e);				
+			}
+			
 	}
 
 
@@ -380,7 +388,7 @@ public class ImageSearchServlet extends HttpServlet {
 
 	/*Method to downrank manually curated spam domains*/
 	private String setDummySpamFilter(String q) throws IOException {
-		List<String> spamDomains = FileUtils.readLines(new File("/spam.txt"), "utf-8");
+		
 		for(String spamDomain:spamDomains){
 			q= q + " pageHost:*"+spamDomain+"^-50";
 		}
