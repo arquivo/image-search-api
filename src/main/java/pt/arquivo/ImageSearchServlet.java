@@ -1,5 +1,6 @@
 package pt.arquivo;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.DateFormat;
@@ -10,6 +11,7 @@ import java.util.Base64;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
+import java.util.List;
 import java.util.TimeZone;
 
 import javax.servlet.ServletConfig;
@@ -18,6 +20,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.client.solrj.SolrServerException;
@@ -269,13 +272,18 @@ public class ImageSearchServlet extends HttpServlet {
 			}
 			
 			solrQuery.set("defType", "edismax");
+			
 			solrQuery.set("qf", "imgTitle^4 imgAlt^3 imgSrcTokens^2 pageTitle pageURLTokens");
+			
 			solrQuery.set("pf", "imgTitle^4000 imgAlt^3000 imgSrcTokens^2000 pageTitle^1000 pageURLTokens^1000");
 			solrQuery.set("ps", 1);
+			
 			solrQuery.set("pf2", "imgTitle^400 imgAlt^300 imgSrcTokens^200 pageTitle^100 pageURLTokens^100");
 			solrQuery.set("ps2", 2);
+			
 			solrQuery.set("pf3", "imgTitle^40 imgAlt^30 imgSrcTokens^20 pageTitle^10 pageURLTokens^10");
 			solrQuery.set("ps3", 3);
+			
 			solrQuery.setRows(limit); 
 			solrQuery.setStart(start);
 			solrQuery.set("fl", flString);
@@ -371,14 +379,8 @@ public class ImageSearchServlet extends HttpServlet {
 
 
 	/*Method to downrank manually curated spam domains*/
-	private String setDummySpamFilter(String q) {
-		ArrayList<String> spamDomains = new ArrayList<String>();
-		spamDomains.add("venda.nuroa.pt");
-		spamDomains.add("autobazar.eu");
-		spamDomains.add("adoos.pt");
-		spamDomains.add("anunico.com.pt");
-		spamDomains.add("atalho.com");
-		spamDomains.add("blidoo.pt");
+	private String setDummySpamFilter(String q) throws IOException {
+		List<String> spamDomains = FileUtils.readLines(new File("/spam.txt"), "utf-8");
 		for(String spamDomain:spamDomains){
 			q= q + " pageHost:*"+spamDomain+"^-50";
 		}
