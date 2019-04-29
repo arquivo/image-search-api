@@ -86,10 +86,13 @@ public class ImageSearchServlet extends HttpServlet {
 				LOG.debug("[init] Null waybackHost parameter in Web.xml");				
 			}
 			try {
-				spamDomains = FileUtils.readLines(new File("spam.txt"), "utf-8");
+				File file = new File(
+						getClass().getClassLoader().getResource("spam.txt").getFile()
+					);		
+				spamDomains = FileUtils.readLines(file, "utf-8");
 			} catch (IOException e) {				
 				e.printStackTrace();
-				throw new ServletException("ERROR Loading spam domains", e);				
+				throw new ServletException("ERROR Loading spam domains !", e);				
 			}
 			
 	}
