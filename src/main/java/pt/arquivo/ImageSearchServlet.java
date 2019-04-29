@@ -273,7 +273,8 @@ public class ImageSearchServlet extends HttpServlet {
 				q = "*:*";
 			}
 			
-			q = setDummySpamFilter(q);
+			String bq= "";
+			bq = setDummySpamFilter();
 			
 			solrQuery.setQuery(q);
 			LOG.debug("FilterQuery Strings:" + fqStrings);
@@ -294,6 +295,8 @@ public class ImageSearchServlet extends HttpServlet {
 			
 			solrQuery.set("pf3", "imgTitle^40 imgAlt^30 imgSrcTokens^20 pageTitle^10 pageURLTokens^10");
 			solrQuery.set("ps3", 3);
+			
+			solrQuery.set("bq", bq);
 			
 			solrQuery.setRows(limit); 
 			solrQuery.setStart(start);
@@ -390,12 +393,12 @@ public class ImageSearchServlet extends HttpServlet {
 
 
 	/*Method to downrank manually curated spam domains*/
-	private String setDummySpamFilter(String q) throws IOException {
-		
+	private String setDummySpamFilter() throws IOException {
+		String bq= "";
 		for(String spamDomain:spamDomains){
-			q= q + " pageHost:*"+spamDomain+"^-50";
+			bq= bq + " pageHost:*"+spamDomain+"^-50";
 		}
-		return q;
+		return bq;
 	}
 
 
