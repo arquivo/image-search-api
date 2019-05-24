@@ -7,6 +7,7 @@ import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Calendar;
 import java.util.Date;
@@ -25,6 +26,10 @@ import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
+import org.apache.solr.client.solrj.impl.CloudSolrClient;
+import org.apache.solr.client.solrj.impl.CloudSolrClient.Builder;
+
+
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.common.SolrDocument;
 import org.apache.solr.common.SolrDocumentList;
@@ -57,6 +62,7 @@ public class ImageSearchServlet extends HttpServlet {
 	private static final Logger LOG = LoggerFactory.getLogger( ImageSearchServlet.class );  
 	private static String collectionsHost = null;
 	private static String solrHost = null;
+	private static String solrCollection = null;
 	private static final SimpleDateFormat FORMAT = new SimpleDateFormat( "yyyyMMddHHmmss" );
 	Calendar DATE_END = new GregorianCalendar( );
 	private static final String DEFAULT_FL_STRING = "imgSrc,imgMimeType,imgHeight,imgWidth,imgTstamp,imgTitle,imgAlt,pageURL,pageTstamp,pageTitle,collection";
@@ -76,6 +82,8 @@ public class ImageSearchServlet extends HttpServlet {
     
 			collectionsHost = config.getInitParameter("waybackHost");
 			solrHost = config.getInitParameter("solrServer");
+			solrCollection = config.getInitParameter("solrCollection");
+			
 			TimeZone zone = TimeZone.getTimeZone( "GMT" );
 			FORMAT.setTimeZone( zone );
 			
@@ -83,8 +91,13 @@ public class ImageSearchServlet extends HttpServlet {
 				LOG.debug("[init] Null waybackHost parameter in Web.xml");
 			}
 			if(solrHost == null){
-				LOG.debug("[init] Null waybackHost parameter in Web.xml");				
+				LOG.debug("[init] Null solrHost parameter in Web.xml");				
 			}
+			if(solrCollection == null){
+				LOG.debug("[init] Null waybackHost parameter in Web.xml");
+				throw new ServletException("ERROR solrCollection in Web.xml");
+			}
+			
 			try {
 				File file = new File(
 						getClass().getClassLoader().getResource("spam.txt").getFile()
@@ -266,7 +279,21 @@ public class ImageSearchServlet extends HttpServlet {
 		try {
 			LOG.debug("Wayback HOST: " + collectionsHost);
 			LOG.debug("SOLR HOST: " + solrHost);
-			SolrClient solr = new HttpSolrClient.Builder(solrHost).build();
+			SolrClient solr;
+			
+			
+			if(solrHost.contains(",")){
+				Builder builder = new CloudSolrClient.Builder();
+				builder.withZkHost(
+						Arrays.asList(new String[] { solrHost }));				
+				solr = (CloudSolrClient) builder.build();	
+				((CloudSolrClient) solr).setDefaultCollection(solrCollection);
+			}
+			else{
+			 solr = new HttpSolrClient.Builder(solrHost+solrCollection).build();
+			}
+			
+			
 			SolrQuery solrQuery = new SolrQuery();
 			
 			if(q.trim().isEmpty()){
