@@ -67,9 +67,7 @@ public class ImageSearchServlet extends HttpServlet {
 	Calendar DATE_END = new GregorianCalendar( );
 	private static final String DEFAULT_FL_STRING = "imgSrc,imgMimeType,imgHeight,imgWidth,imgTstamp,imgTitle,imgAlt,pageURL,pageTstamp,pageTitle,collection";
 	private static final String MOREFIELDS = "imgThumbnailBase64,imgSrcURLDigest,imgDigest,pageProtocol,pageHost,pageImages,safe" ;
-	
-	private List<String> spamDomains;
-	
+		
 	private ArrayList<String> fqStrings;
 	private String q;
 
@@ -97,17 +95,7 @@ public class ImageSearchServlet extends HttpServlet {
 				LOG.debug("[init] Null waybackHost parameter in Web.xml");
 				throw new ServletException("ERROR solrCollection in Web.xml");
 			}
-			
-			try {
-				File file = new File(
-						getClass().getClassLoader().getResource("spam.txt").getFile()
-					);		
-				spamDomains = FileUtils.readLines(file, "utf-8");
-			} catch (IOException e) {				
-				e.printStackTrace();
-				throw new ServletException("ERROR Loading spam domains !", e);				
-			}
-			
+		
 	}
 
 
@@ -300,8 +288,6 @@ public class ImageSearchServlet extends HttpServlet {
 				q = "*:*";
 			}
 			
-			String bq= "";
-			bq = setDummySpamFilter();
 			
 			solrQuery.setQuery(q);
 			LOG.debug("FilterQuery Strings:" + fqStrings);
@@ -323,7 +309,6 @@ public class ImageSearchServlet extends HttpServlet {
 			solrQuery.set("pf3", "imgTitle^40 imgAlt^30 imgSrcTokens^20 pageTitle^10 pageURLTokens^10");
 			solrQuery.set("ps3", 3);
 			
-			solrQuery.set("bq", bq);
 			
 			solrQuery.setRows(limit); 
 			solrQuery.setStart(start);
@@ -418,15 +403,6 @@ public class ImageSearchServlet extends HttpServlet {
 		out.flush( );
 	}
 
-
-	/*Method to downrank manually curated spam domains*/
-	private String setDummySpamFilter() throws IOException {
-		String bq= "";
-		for(String spamDomain:spamDomains){
-			bq= bq + " pageHost:*"+spamDomain+"^-50";
-		}
-		return bq;
-	}
 
 
 	/*************************************************************/
