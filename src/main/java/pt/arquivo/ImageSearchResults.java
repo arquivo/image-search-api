@@ -69,7 +69,7 @@ public class ImageSearchResults {
 			     }				 
 			 }
 			 if(newDocument.containsKey(IMAGESRC) && newDocument.containsKey(IMAGETSTAMP)){
-				 newDocument.addField(IMAGELINKTOARCHIVE, WAYBACKADDRESS + newDocument.getFieldValue(IMAGETSTAMP)+"/"+newDocument.getFieldValue(IMAGESRC));
+				 newDocument.addField(IMAGELINKTOARCHIVE, WAYBACKADDRESS + newDocument.getFieldValue(IMAGETSTAMP)+"im_/"+newDocument.getFieldValue(IMAGESRC));
 			 }
 			 if(newDocument.containsKey(PAGEURL) && newDocument.containsKey(PAGETSTAMP)){
 				 newDocument.addField(PAGELINKTOARCHIVE, WAYBACKADDRESS + newDocument.getFieldValue(PAGETSTAMP)+"/"+newDocument.getFieldValue(PAGEURL));
