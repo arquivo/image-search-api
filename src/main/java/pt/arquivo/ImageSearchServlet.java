@@ -42,9 +42,9 @@ import com.google.gson.JsonParseException;
 import org.apache.solr.client.solrj.util.ClientUtils;
 
 /**
- * ImageSearch API Back-End. 
+ * ImageSearch API Back-End.
  * Servlet responsible for returning a json object with the results of the query received in the parameter.
- * 
+ *
  * @author fmelo
  * @version 1.0
  */
@@ -54,12 +54,12 @@ public class ImageSearchServlet extends HttpServlet {
 	 * 	Search the indexes Lucene, through the calls to the queryServers.
 	 *	Search by URL in CDX indexes, through the CDXServer API.
 	 *
-	 * Documentation: https://arquivo.pt/api - 
+	 * Documentation: https://arquivo.pt/api -
 	 */
 
 
 	private static final long serialVersionUID = 1L;
-	private static final Logger LOG = LoggerFactory.getLogger( ImageSearchServlet.class );  
+	private static final Logger LOG = LoggerFactory.getLogger( ImageSearchServlet.class );
 	private static String collectionsHost = null;
 	private static String solrHost = null;
 	private static String solrCollection = null;
@@ -67,7 +67,7 @@ public class ImageSearchServlet extends HttpServlet {
 	Calendar DATE_END = new GregorianCalendar( );
 	private static final String DEFAULT_FL_STRING = "imgSrc,imgMimeType,imgHeight,imgWidth,imgTstamp,imgTitle,imgAlt,pageURL,pageTstamp,pageTitle,collection";
 	private static final String MOREFIELDS = "imgThumbnailBase64,imgSrcURLDigest,imgDigest,pageProtocol,pageHost,pageImages,safe" ;
-		
+
 	private ArrayList<String> fqStrings;
 	private String q;
 
@@ -77,25 +77,25 @@ public class ImageSearchServlet extends HttpServlet {
 	 * @return void
 	 */
 	public void init( ServletConfig config ) throws ServletException {
-    
+
 			collectionsHost = config.getInitParameter("waybackHost");
 			solrHost = config.getInitParameter("solrServer");
 			solrCollection = config.getInitParameter("solrCollection");
-			
+
 			TimeZone zone = TimeZone.getTimeZone( "GMT" );
 			FORMAT.setTimeZone( zone );
-			
+
 			if(collectionsHost == null){
 				LOG.debug("[init] Null waybackHost parameter in Web.xml");
 			}
 			if(solrHost == null){
-				LOG.debug("[init] Null solrHost parameter in Web.xml");				
+				LOG.debug("[init] Null solrHost parameter in Web.xml");
 			}
 			if(solrCollection == null){
 				LOG.debug("[init] Null waybackHost parameter in Web.xml");
 				throw new ServletException("ERROR solrCollection in Web.xml");
 			}
-		
+
 	}
 
 
@@ -103,19 +103,19 @@ public class ImageSearchServlet extends HttpServlet {
 	 * HttpServlet doGet method
 	 * @param request - type HttpServletRequest
 	 * @param response - type HttpServletResponse
-	 * 
+	 *
 	 */
 	public void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		fqStrings = new ArrayList<String>();
 		LOG.debug("[doGet] query request from " + request.getRemoteAddr( ) );
 		String requestURL = request.getScheme() + "://" +
-	             request.getServerName() + 
+	             request.getServerName() +
 	             ("http".equals(request.getScheme()) && request.getServerPort() == 80 || "https".equals(request.getScheme()) && request.getServerPort() == 443 ? "" : ":" + request.getServerPort() ) +
 	             request.getRequestURI() +
-	            (request.getQueryString() != null ? "?" + request.getQueryString() : "");		
+	            (request.getQueryString() != null ? "?" + request.getQueryString() : "");
 		LOG.debug("[imagesearch request] : "+ requestURL);
-		
+
 		response.addHeader("Access-Control-Allow-Origin", "*");
 		response.addHeader("Access-Control-Allow-Methods", "GET, HEAD");
 
@@ -157,7 +157,7 @@ public class ImageSearchServlet extends HttpServlet {
 		if( limit > 200 )
 			limit = 200; //Max Number of Results 200 in one request?
 
-		// date restriction   
+		// date restriction
 		String dateStart = request.getParameter( "from" );
 		if ( dateStart == null || dateStart.length( ) == 0 ) {
 			dateStart = "19960101000000";
@@ -168,7 +168,7 @@ public class ImageSearchServlet extends HttpServlet {
 			dateEnd = FORMAT.format( dateEND.getTime( ) );
 		}
 
-		if (dateStart!=null && dateEnd!=null) { //Logic to accept pages with yyyy and yyyyMMddHHmmss format 
+		if (dateStart!=null && dateEnd!=null) { //Logic to accept pages with yyyy and yyyyMMddHHmmss format
 
 			try {
 				DateFormat dOutputFormatTimestamp = new SimpleDateFormat("yyyyMMddHHmmss");
@@ -179,7 +179,7 @@ public class ImageSearchServlet extends HttpServlet {
 					Date dStart = dOutputFormatTimestamp.parse( dateStart );
 					dateStart = dOutputFormatTimestamp.format( dStart.getTime( ) );
 				} else if( tryParse( dOutputFormatYear , dateStart )  ) {
-					String extensionStart = "0101000000"; 
+					String extensionStart = "0101000000";
 					dateStart = dateStart.concat( extensionStart );
 					if( tryParse( dOutputFormatTimestamp , dateStart )  ) {
 						Date dStart = dOutputFormatTimestamp.parse( dateStart );
@@ -207,7 +207,7 @@ public class ImageSearchServlet extends HttpServlet {
 				LOG.error( "Parse Exception: " , e );
 			} catch ( IndexOutOfBoundsException e ) {
 				LOG.error( "Parse Exception: " , e );
-			}    	
+			}
 		}
 		fqStrings.add("imgTstamp:["+dateStart + " TO "+ dateEnd+"]");
 		safeSearch = request.getParameter("safeSearch");
@@ -225,7 +225,7 @@ public class ImageSearchServlet extends HttpServlet {
 	    	  else{
 	    		  fqStrings.add("imgMimeType: image/"+ typeParameter);
 	    	  }
-	      }		
+	      }
 	      String sizeParameter = request.getParameter( "size" );
 	      if( sizeParameter == null )
 	    	  sizeParameter = "";
@@ -233,7 +233,7 @@ public class ImageSearchServlet extends HttpServlet {
 	    	  if(sizeParameter.equals("sm")){
 	    		  fqStrings.add("{!frange u=65536 }product(imgHeight,imgWidth)"); /*images up to 65536pixels² of area - i.e. max square size of 256x256px*/
 	    	  }else if(sizeParameter.equals("md")){
-	    		  fqStrings.add("{!frange l=65537 u=810000 }product(imgHeight,imgWidth)"); /*images between 65537pixels² of area , up to  810000px² of area - i.e. max square size of 900x900px*/ 
+	    		  fqStrings.add("{!frange l=65537 u=810000 }product(imgHeight,imgWidth)"); /*images between 65537pixels² of area , up to  810000px² of area - i.e. max square size of 900x900px*/
 	    	  }else if(sizeParameter.equals("lg")){
 	    		  fqStrings.add("{!frange l=810001}product(imgHeight,imgWidth)"); /*images bigger than 810000px² of area*/
 	    	  }
@@ -248,74 +248,78 @@ public class ImageSearchServlet extends HttpServlet {
 	      }
 	      if( request.getParameter( "siteSearch" ) != null ){
 	    	  fqStrings.add("pageURL:*" + ClientUtils.escapeQueryChars(request.getParameter( "siteSearch" ))+"*");
-	      }	
-	      
+	      }
+	      String requestedCollection = request.getParameter( "collection" );
+		  if ( requestedCollection != null ) {
+	    	  fqStrings.add("collection:" + requestedCollection );
+	      }
+
 	      /*Process operators such as site: type: and site: inside the q parameter*/
-	      /*Should we allow people to use those operators when calling the api e.g.   
-	       * /imagesearch?q=sapo%20site:sapo.pt%20type:jpeg instead of 
+	      /*Should we allow people to use those operators when calling the api e.g.
+	       * /imagesearch?q=sapo%20site:sapo.pt%20type:jpeg instead of
 	       * /imagesearch?q=sapo&siteSearch=sapo.pt&type=jpeg */
 	      q = checkSpecialOperators();
-	      
-		//Pretty print in output message 
+
+		//Pretty print in output message
 		String prettyPrintParameter = request.getParameter( "prettyPrint" );
 		boolean prettyOutput = false;
-		if( prettyPrintParameter != null && prettyPrintParameter.equals( "true" ) ) 
+		if( prettyPrintParameter != null && prettyPrintParameter.equals( "true" ) )
 			prettyOutput = true;
 
 		startTime = System.currentTimeMillis();
-		//execute the query    
+		//execute the query
 		try {
 			LOG.debug("Wayback HOST: " + collectionsHost);
 			LOG.debug("SOLR HOST: " + solrHost);
 			SolrClient solr;
-			
-			
+
+
 			if(solrHost.contains(",")){
 				Builder builder = new CloudSolrClient.Builder();
 				builder.withZkHost(
-						Arrays.asList(new String[] { solrHost }));				
-				solr = (CloudSolrClient) builder.build();	
+						Arrays.asList(new String[] { solrHost }));
+				solr = (CloudSolrClient) builder.build();
 				((CloudSolrClient) solr).setDefaultCollection(solrCollection);
 			}
 			else{
 			 solr = new HttpSolrClient.Builder(solrHost+solrCollection).build();
 			}
-			
-			
+
+
 			SolrQuery solrQuery = new SolrQuery();
-			
+
 			if(q.trim().isEmpty()){
 				q = "*:*";
 			}
-			
-			
+
+
 			solrQuery.setQuery(q);
 			LOG.debug("FilterQuery Strings:" + fqStrings);
-			
+
 			for(String fq : fqStrings){
 				solrQuery.addFilterQuery(fq);
 			}
-			
+
 			solrQuery.set("defType", "edismax");
-			
+
 			solrQuery.set("qf", "imgTitle^4 imgAlt^3 imgSrcTokens^2 pageTitle pageURLTokens");
-			
+
 			solrQuery.set("pf", "imgTitle^4000 imgAlt^3000 imgSrcTokens^2000 pageTitle^1000 pageURLTokens^1000");
 			solrQuery.set("ps", 1);
-			
+
 			solrQuery.set("pf2", "imgTitle^400 imgAlt^300 imgSrcTokens^200 pageTitle^100 pageURLTokens^100");
 			solrQuery.set("ps2", 2);
-			
+
 			solrQuery.set("pf3", "imgTitle^40 imgAlt^30 imgSrcTokens^20 pageTitle^10 pageURLTokens^10");
 			solrQuery.set("ps3", 3);
-			
-			
-			solrQuery.setRows(limit); 
+
+
+			solrQuery.setRows(limit);
 			solrQuery.setStart(start);
 			solrQuery.set("fl", flString);
-			
+
 			LOG.debug("SOLR Query: " + solrQuery);
-			
+
 			QueryResponse responseSolr = null;
 			try{
 				responseSolr = solr.query(solrQuery);
@@ -334,7 +338,7 @@ public class ImageSearchServlet extends HttpServlet {
 					}
 					byte[] encodedImgSrc64 = Base64.getEncoder().encode(bytesImgSrc64);
 					String imgSrc64 = new String(encodedImgSrc64);
-					doc.setField("imgSrcBase64", imgSrc64); 
+					doc.setField("imgSrcBase64", imgSrc64);
 					documents.add(doc);
 				}
 				else{
@@ -356,7 +360,7 @@ public class ImageSearchServlet extends HttpServlet {
 			  }
 			  String nextPage = requestURL.replaceAll("&offset=([^&]+)", "").concat("&offset="+offsetNextPage);
 			  String linkToMoreFields = requestURL.replaceAll("&more=([^&]+)", "").concat("&more="+MOREFIELDS);
-			
+
 			imgSearchResults = new ImageSearchResults(numFound,documents.size() ,responseSolr.getResults().getStart() ,linkToMoreFields,nextPage, previousPage, documents, prettyOutput);
 			if( request.getParameter( "debug" ) != null && request.getParameter( "debug" ).equals("on") ){
 				imgSearchResponse = new ImageSearchResponseDebug(responseSolr.getResponseHeader(),imgSearchResults);
@@ -364,7 +368,7 @@ public class ImageSearchServlet extends HttpServlet {
 				imgSearchResponse = imgSearchResults;
 			}
 		} catch ( IOException e ) {
-			LOG.warn("Search Error", e);    	
+			LOG.warn("Search Error", e);
 		}
 
 		endTime = System.currentTimeMillis();
@@ -372,11 +376,11 @@ public class ImageSearchServlet extends HttpServlet {
 		try {
 			if( prettyOutput ){
 				Gson gson = new GsonBuilder().disableHtmlEscaping().setPrettyPrinting().create();
-				jsonSolrResponse = gson.toJson(imgSearchResponse); 
+				jsonSolrResponse = gson.toJson(imgSearchResponse);
 			}
 			else {
 				Gson gson =  new GsonBuilder().disableHtmlEscaping().create();
-				jsonSolrResponse = gson.toJson(imgSearchResponse); 
+				jsonSolrResponse = gson.toJson(imgSearchResponse);
 			}
 
 		} catch ( JsonParseException e ) {
@@ -391,14 +395,14 @@ public class ImageSearchServlet extends HttpServlet {
 			response.setContentType( "application/json" ); //json
 		}
 		duration = ( endTime - startTime );
-	    String ipAddress = request.getHeader("X-FORWARDED-FOR");  
-        if (ipAddress == null) {  
-        	ipAddress = request.getRemoteAddr();  
-        }		
+	    String ipAddress = request.getHeader("X-FORWARDED-FOR");
+        if (ipAddress == null) {
+        	ipAddress = request.getRemoteAddr();
+        }
 		LOG.info("[ImageSearch API]"+"\t"+duration+"ms\t"+ipAddress+"\t"+requestURL);
-		
-		// Get the printwriter object from response to write the required json object to the output stream      
-		PrintWriter out = response.getWriter( );  
+
+		// Get the printwriter object from response to write the required json object to the output stream
+		PrintWriter out = response.getWriter( );
 		out.print( jsonSolrResponse );
 		out.flush( );
 	}
@@ -416,7 +420,7 @@ public class ImageSearchServlet extends HttpServlet {
 		if( q.contains("site:") || q.contains("type:")|| q.contains("safe:") || q.contains("size:")  ){ /*query has a special operator we need to deal with it*/
 			LOG.debug("found special operator");
 			String[] words = q.split(" ");
-			ArrayList<String> cleanWords = new ArrayList<String>(); 
+			ArrayList<String> cleanWords = new ArrayList<String>();
 			for ( String word : words) {
 				if(word.toLowerCase().startsWith("site:")){
 					LOG.debug("found site:");
@@ -431,13 +435,13 @@ public class ImageSearchServlet extends HttpServlet {
 						else{
 							fqStrings.add("imgMimeType: image/"+ typeWord);
 						}
-					}																
+					}
 				}else if(word.toLowerCase().startsWith("safe:")){
-					LOG.debug("found safe:");							
+					LOG.debug("found safe:");
 					String safeWord = word.replace("safe:", "");
 					if(safeWord.toLowerCase().equals("off") || safeWord.toLowerCase().equals("on")){
 						removeAnySafeFqString();
-					}							
+					}
 					if(! safeWord.toLowerCase().equals("off")){
 						fqStrings.add("safe:[0 TO 0.49]"); /*Default behaviour is to limit safe score from 0 -> 0.49; else show all images*/
 					}
@@ -451,13 +455,13 @@ public class ImageSearchServlet extends HttpServlet {
 				    		  fqStrings.add("{!frange u=65536 }product(imgHeight,imgWidth)"); /*images up to 65536pixels² of area - i.e. max square size of 256x256px*/
 				    	  }else if(sizeWord.equals("md")){
 				    		  LOG.debug("md");
-				    		  fqStrings.add("{!frange l=65537 u=810000 }product(imgHeight,imgWidth)"); /*images between 65537pixels² of area , up to  810000px² of area - i.e. max square size of 900x900px*/ 
+				    		  fqStrings.add("{!frange l=65537 u=810000 }product(imgHeight,imgWidth)"); /*images between 65537pixels² of area , up to  810000px² of area - i.e. max square size of 900x900px*/
 				    	  }else if(sizeWord.equals("lg")){
 				    		  LOG.debug("lg");
 				    		  fqStrings.add("{!frange l=810001}product(imgHeight,imgWidth)"); /*images bigger than 810000px² of area*/
 				    	  }
 				      }
-					
+
 				}else{
 					LOG.debug(" found clean word");
 					cleanWords.add(word);
@@ -476,7 +480,7 @@ public class ImageSearchServlet extends HttpServlet {
 		    {
 		        fqStrings.remove(i);
 		    }
-		}		
+		}
 	}
 
 
