@@ -1,6 +1,5 @@
 package pt.arquivo;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.DateFormat;
@@ -12,8 +11,8 @@ import java.util.Base64;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
-import java.util.List;
 import java.util.TimeZone;
+import java.util.stream.Collectors;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
@@ -21,16 +20,14 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.client.solrj.SolrServerException;
-import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.client.solrj.impl.CloudSolrClient.Builder;
-
-
+import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.response.QueryResponse;
+import org.apache.solr.client.solrj.util.ClientUtils;
 import org.apache.solr.common.SolrDocument;
 import org.apache.solr.common.SolrDocumentList;
 import org.slf4j.Logger;
@@ -39,7 +36,6 @@ import org.slf4j.LoggerFactory;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParseException;
-import org.apache.solr.client.solrj.util.ClientUtils;
 
 /**
  * ImageSearch API Back-End.
@@ -250,8 +246,8 @@ public class ImageSearchServlet extends HttpServlet {
 	    	  fqStrings.add("pageURL:*" + ClientUtils.escapeQueryChars(request.getParameter( "siteSearch" ))+"*");
 	      }
 	      String requestedCollection = request.getParameter( "collection" );
-		  if ( requestedCollection != null ) {
-	    	  fqStrings.add("collection:" + requestedCollection );
+		  if ( requestedCollection != null && requestedCollection.length() > 0 ) {
+	    	  fqStrings.add(Arrays.asList(requestedCollection.split(",")).stream().map(c -> "collection:" + c).collect(Collectors.joining(" OR ")));
 	      }
 
 	      /*Process operators such as site: type: and site: inside the q parameter*/
