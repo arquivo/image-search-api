@@ -390,6 +390,7 @@ public class ImageSearchServlet extends HttpServlet {
 		else{
 			response.setContentType( "application/json" ); //json
 		}
+		response.setCharacterEncoding("UTF-8");
 		duration = ( endTime - startTime );
 	    String ipAddress = request.getHeader("X-FORWARDED-FOR");
         if (ipAddress == null) {
