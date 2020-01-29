@@ -9,16 +9,21 @@
   	<display-name>ImageSearchServlet</display-name>
   	<description>Image Search Servlet for Image Search API</description>
   	<servlet-class>pt.arquivo.ImageSearchServlet</servlet-class>
-     <init-param>
-         <param-name>solrServer</param-name>
-         <param-value>http://p28.arquivo.pt:8983/solr/SAFE</param-value>
-         <description>Location to the SOLR collection</description>                
-     </init-param>
-     <init-param> 
-         <param-name>waybackHost</param-name>
-         <param-value>p28.arquivo.pt/wayback</param-value>
-         <description>Location to the wayback </description> 
-     </init-param>  	
+    <init-param>
+      <param-name>solrServer</param-name>
+      <param-value>${broker.image.search.solr.server}</param-value>
+      <description>Location to the SOLR collection</description>
+    </init-param>
+    <init-param>
+      <param-name>solrCollection</param-name>
+      <param-value>${broker.image.search.solr.collection}</param-value>
+      <description>Name of the SOLR collection</description>
+    </init-param>
+    <init-param>
+      <param-name>waybackHost</param-name>
+      <param-value>${wayback.server}/wayback</param-value>
+      <description>Location to the wayback </description>
+    </init-param>
   </servlet>
   <servlet-mapping>
   	<servlet-name>ImageSearchServlet</servlet-name>

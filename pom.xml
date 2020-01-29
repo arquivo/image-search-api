@@ -1,66 +1,72 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
-  <modelVersion>4.0.0</modelVersion>
-  <groupId>pt.arquivo</groupId>
-  <artifactId>pwaimagesearch</artifactId>
-  <packaging>war</packaging>
-  <version>0.0.1-SNAPSHOT</version>
-  <name>pwaimagesearch Maven Webapp</name>
-  <url>http://maven.apache.org</url>
-  <dependencies>
-	<dependency>
-		<groupId>org.slf4j</groupId>
-		<artifactId>slf4j-api</artifactId>
-		<version>1.7.25</version>
-	</dependency>
-	<dependency>
-		<groupId>org.slf4j</groupId>
-		<artifactId>slf4j-log4j12</artifactId>
-		<version>1.7.25</version>
-	</dependency>
-	<dependency>
-	  <groupId>javax.servlet</groupId>
-	  <artifactId>javax.servlet-api</artifactId>
-	  <version>3.1.0</version>
-	  <scope>provided</scope>
-	</dependency>  
-	<dependency>
-	    <groupId>com.google.code.gson</groupId>
-	    <artifactId>gson</artifactId>
-	    <version>2.8.0</version>
-	</dependency>   
-	<dependency>
-    	<groupId>org.apache.solr</groupId>
-    	<artifactId>solr-solrj</artifactId>
-    	<version>6.3.0</version>
-	</dependency>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>pt.arquivo</groupId>
+	<artifactId>image-search-api</artifactId>
+	<packaging>war</packaging>
+	<version>0.0.1-SNAPSHOT</version>
+	<name>Image Search API</name>
+	<url>https://arquivo.pt</url>
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<maven.compiler.source>1.8</maven.compiler.source>
+		<maven.compiler.target>1.8</maven.compiler.target>
 
+		<broker.image.search.solr.server>http://p63.arquivo.pt:8983/solr/</broker.image.search.solr.server>
+		<broker.image.search.solr.collection>SAFE</broker.image.search.solr.collection>
+		<wayback.server>preprod.arquivo.pt/wayback</wayback.server>
+	</properties>
+	<dependencies>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+			<version>1.7.25</version>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-log4j12</artifactId>
+			<version>1.7.25</version>
+		</dependency>
+		<dependency>
+			<groupId>javax.servlet</groupId>
+			<artifactId>javax.servlet-api</artifactId>
+			<version>3.1.0</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.google.code.gson</groupId>
+			<artifactId>gson</artifactId>
+			<version>2.8.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.solr</groupId>
+			<artifactId>solr-solrj</artifactId>
+			<version>6.3.0</version>
+		</dependency>
+	</dependencies>
+	<build>
+		<!-- Change war name -->
+		<finalName>${project.artifactId}</finalName>
 
-
-		 
-  </dependencies>
-  <build>
-    <finalName>pwaimagesearch</finalName>
-    <plugins>
-      <plugin>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.5.1</version>
-        <configuration>
-          <source>1.8</source>
-          <target>1.8</target>
-        </configuration>
-      </plugin>
-
-      <!-- Embedded Apache Tomcat required for testing war -->
-
-      <plugin>
-        <groupId>org.apache.tomcat.maven</groupId>
-        <artifactId>tomcat8-maven-plugin</artifactId>
-        <version>3.0-r1756463</version>
-        <configuration>
-          <path>/</path>
-        </configuration>
-      </plugin>    
-    </plugins>
-  </build>
+		<plugins>
+			<!-- Replace maven properties on web.xml file -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-war-plugin</artifactId>
+				<version>3.2.3</version>
+				<configuration>
+					<webResources>
+						<resource>
+							<filtering>true</filtering>
+							<directory>src/main/webapp</directory>
+							<includes>
+								<include>**/web.xml</include>
+							</includes>
+						</resource>
+					</webResources>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
 </project>
