@@ -13,7 +13,8 @@
 		<maven.compiler.source>1.8</maven.compiler.source>
 		<maven.compiler.target>1.8</maven.compiler.target>
 
-		<broker.image.search.solr.server>http://p63.arquivo.pt:8983/solr/</broker.image.search.solr.server>
+		<solr.server>p63.arquivo.pt</solr.server>
+		<broker.image.search.solr.server>http://${solr.server}:8983/solr/</broker.image.search.solr.server>
 		<broker.image.search.solr.collection>SAFE</broker.image.search.solr.collection>
 		<wayback.server>preprod.arquivo.pt/wayback</wayback.server>
 	</properties>
