@@ -314,6 +314,9 @@ public class ImageSearchServlet extends HttpServlet {
 			solrQuery.setStart(start);
 			solrQuery.set("fl", flString);
 
+			solrQuery.addSort("score", SolrQuery.ORDER.desc);
+			solrQuery.addSort("pageTstamp", SolrQuery.ORDER.asc);
+
 			LOG.debug("SOLR Query: " + solrQuery);
 
 			QueryResponse responseSolr = null;
