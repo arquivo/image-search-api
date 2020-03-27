@@ -315,7 +315,8 @@ public class ImageSearchServlet extends HttpServlet {
 			solrQuery.set("fl", flString);
 
 			solrQuery.addSort("score", SolrQuery.ORDER.desc);
-			solrQuery.addSort("pageTstamp", SolrQuery.ORDER.asc);
+			solrQuery.addSort("field(imgTstamp,min)", SolrQuery.ORDER.asc);
+			solrQuery.addSort("imgSrc", SolrQuery.ORDER.asc);
 
 			LOG.debug("SOLR Query: " + solrQuery);
 
