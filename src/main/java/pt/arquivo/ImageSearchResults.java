@@ -1,6 +1,7 @@
 package pt.arquivo;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 import org.apache.solr.common.SolrDocument;
@@ -62,14 +63,16 @@ public class ImageSearchResults {
                     imgTstamps = (ArrayList<Long>) current.getFieldValue(IMAGETSTAMP);
                     newDocument.addField(IMAGETSTAMP, imgTstamps.get(0));
                 } else if (key.equals(SAFE)) {
-                    newDocument.addField(SAFE, 1.0 - (double) current.getFieldValue(SAFE));
+                    newDocument.addField(SAFE, 1.0f - (float) current.getFieldValue(SAFE));
                 } else if (key.equals(IMGSRCBASE64)) {
                     newDocument.addField(IMGTHUMBNAILBASE64, current.getFieldValue(IMGSRCBASE64));
 				} else if (key.equals(IMGWIDTH)) {
-					newDocument.addField(IMGWIDTH, ((Double)current.getFieldValue(IMGWIDTH)).intValue());
+					newDocument.addField(IMGWIDTH, (new Float(""+current.getFieldValue(IMGWIDTH))).intValue());
 				} else if (key.equals(IMGHEIGHT)) {
-					newDocument.addField(IMGHEIGHT, ((Double)current.getFieldValue(IMGHEIGHT)).intValue());
-
+                    newDocument.addField(IMGHEIGHT, (new Float(""+current.getFieldValue(IMGHEIGHT))).intValue());
+                } else if (key.equals(IMAGESRC)) {
+                    List<String> urls = (List<String>) current.getFieldValue(IMAGESRC);
+                    newDocument.addField(IMAGESRC, urls.get(0));
                 } else {
                     newDocument.addField(key, current.getFieldValue(key));
                 }
