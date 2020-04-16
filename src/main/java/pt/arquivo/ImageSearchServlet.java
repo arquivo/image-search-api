@@ -425,7 +425,8 @@ public class ImageSearchServlet extends HttpServlet {
 			for ( String word : words) {
 				if(word.toLowerCase().startsWith("site:")){
 					LOG.debug("found site:");
-					fqStrings.add("pageURL:*" + ClientUtils.escapeQueryChars(word.replace("site:", "")) + "*");
+					String domain = ClientUtils.escapeQueryChars(word.replace("site:", ""));
+					fqStrings.add("pageHost:*." + domain + " OR pageHost:" + domain);
 				}else if (word.toLowerCase().startsWith("type:")){
 					LOG.debug("found type:");
 					String typeWord = word.replace("type:", "");
