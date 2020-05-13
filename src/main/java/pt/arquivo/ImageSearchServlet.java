@@ -5,14 +5,7 @@ import java.io.PrintWriter;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.GregorianCalendar;
-import java.util.TimeZone;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import javax.servlet.ServletConfig;
@@ -60,9 +53,8 @@ public class ImageSearchServlet extends HttpServlet {
     private static String collectionsHost = null;
     private static String solrHost = null;
     private static String solrCollection = null;
-    private static final SimpleDateFormat FORMAT = new SimpleDateFormat("yyyyMMddHHmmss");
-	private static final SimpleDateFormat NEW_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
-
+    private static final SimpleDateFormat FORMAT_IN = new SimpleDateFormat("yyyyMMddHHmmss");
+    private static final SimpleDateFormat FORMAT_OUT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX", Locale.US);
     Calendar DATE_END = new GregorianCalendar();
     private static final String DEFAULT_FL_STRING = "imgSrc,imgMimeType,imgHeight,imgWidth,imgTstamp,imgTitle,imgAlt,pageURL,pageTstamp,pageTitle,collection";
     private static final String MOREFIELDS = "imgThumbnailBase64,imgSrcURLDigest,imgDigest,pageProtocol,pageHost,pageImages,safe";
@@ -83,8 +75,9 @@ public class ImageSearchServlet extends HttpServlet {
         solrCollection = config.getInitParameter("solrCollection");
 
         TimeZone zone = TimeZone.getTimeZone("GMT");
-        FORMAT.setTimeZone(zone);
-        NEW_FORMAT.setTimeZone(TimeZone.getTimeZone("GMT"));
+        FORMAT_IN.setTimeZone(zone);
+        FORMAT_OUT.setTimeZone(zone);
+
 
         if (collectionsHost == null) {
             LOG.debug("[init] Null waybackHost parameter in Web.xml");
@@ -161,48 +154,40 @@ public class ImageSearchServlet extends HttpServlet {
         // date restriction
         String dateStart = request.getParameter("from");
         if (dateStart == null || dateStart.length() == 0) {
-            dateStart = "19960101000000";
+            dateStart = "1996-01-01T00:00:00Z";
+            //dateStart = FORMAT_OUT.format( dateStart );
         }
         String dateEnd = request.getParameter("to");
         if (dateEnd == null || dateEnd.length() == 0) {
             Calendar dateEND = currentDate();
-            dateEnd = FORMAT.format(dateEND.getTime());
+            dateEnd = FORMAT_OUT.format(dateEND.getTime());
         }
 
-		DateFormat dOutputFormatTimestamp = FORMAT;
         if (dateStart != null && dateEnd != null) { //Logic to accept pages with yyyy and yyyyMMddHHmmss format
 
             try {
-                dOutputFormatTimestamp.setLenient(false);
+                FORMAT_OUT.setLenient(false);
                 DateFormat dOutputFormatYear = new SimpleDateFormat("yyyy");
                 dOutputFormatYear.setLenient(false);
-                if (tryParse(dOutputFormatTimestamp, dateStart)) {
-                    Date dStart = dOutputFormatTimestamp.parse(dateStart);
-                    dateStart = dOutputFormatTimestamp.format(dStart.getTime());
-                } else if (tryParse(dOutputFormatYear, dateStart)) {
-                    String extensionStart = "0101000000";
-                    dateStart = dateStart.concat(extensionStart);
-                    if (tryParse(dOutputFormatTimestamp, dateStart)) {
-                        Date dStart = dOutputFormatTimestamp.parse(dateStart);
-                        dateStart = dOutputFormatTimestamp.format(dStart.getTime());
-                    }
+                if (tryParse(FORMAT_IN, dateStart)) {
+                    Date dStart = FORMAT_IN.parse(dateStart);
+                    dateStart = FORMAT_OUT.format(dStart.getTime());
+                } else if (tryParse(FORMAT_IN, dateStart + "0101000000")) {
+                    Date dStart = FORMAT_IN.parse(dateStart + "0101000000");
+                    dateStart = FORMAT_OUT.format(dStart.getTime());
                 } else {
-                    dateStart = "19960101000000";
+                    dateStart = "1996-01-01T00:00:00Z";
                 }
 
-                if (tryParse(dOutputFormatTimestamp, dateEnd)) {
-                    Date dEnd = dOutputFormatTimestamp.parse(dateEnd);
-                    dateEnd = dOutputFormatTimestamp.format(dEnd.getTime());
-                } else if (tryParse(dOutputFormatYear, dateEnd)) {
-                    String extensionEnd = "1231235959";
-                    dateEnd = dateEnd.concat(extensionEnd);
-                    if (tryParse(dOutputFormatTimestamp, dateEnd)) {
-                        Date dEnd = dOutputFormatTimestamp.parse(dateEnd);
-                        dateEnd = dOutputFormatTimestamp.format(dEnd.getTime());
-                    }
+                if (tryParse(FORMAT_IN, dateEnd)) {
+                    Date dEnd = FORMAT_IN.parse(dateEnd);
+                    dateEnd = FORMAT_OUT.format(dEnd.getTime());
+                } else if (tryParse(FORMAT_IN, dateEnd + "1231235959")) {
+                    Date dEnd = FORMAT_IN.parse(dateEnd + "1231235959");
+                    dateEnd = FORMAT_OUT.format(dEnd.getTime());
                 } else {
                     Calendar dateEND = currentDate();
-                    dateEnd = FORMAT.format(dateEND.getTime());
+                    dateEnd = FORMAT_OUT.format(dateEND.getTime());
                 }
             } catch (ParseException e) {
                 LOG.error("Parse Exception: ", e);
@@ -210,17 +195,6 @@ public class ImageSearchServlet extends HttpServlet {
                 LOG.error("Parse Exception: ", e);
             }
         }
-
-		String dateStartNew = "";
-		String dateEndNew = "";
-		try {
-			dateStartNew = NEW_FORMAT.format(dOutputFormatTimestamp.parse(dateStart));
-			dateEndNew = NEW_FORMAT.format(dOutputFormatTimestamp.parse(dateEnd));
-		} catch (ParseException e) {
-			e.printStackTrace();
-		}
-
-
         fqStrings.add("imgTstamp:[" + dateStart + " TO " + dateEnd + "]");
         safeSearch = request.getParameter("safeSearch");
         if (!"off".equals(safeSearch)) {
@@ -310,8 +284,6 @@ public class ImageSearchServlet extends HttpServlet {
                 solrQuery.addFilterQuery(fq);
             }
 
-            solrQuery.setTermsRaw(true);
-
             solrQuery.set("defType", "edismax");
 
             solrQuery.set("qf", "imgTitle^4 imgAlt^3 imgSrcTokens^2 pageTitle pageURLTokens");
@@ -341,50 +313,41 @@ public class ImageSearchServlet extends HttpServlet {
                 responseSolr = solr.query(solrQuery);
             } catch (SolrServerException e) {
                 LOG.debug("Solr Server Exception : " + e);
-            } catch (HttpSolrClient.RemoteSolrException e) {
-                LOG.debug("Remote Solr Server Exception : " + e);
-				solrQuery.removeFilterQuery(fqStrings.get(0));
-				String fq = "imgTstamp:[" + dateStartNew + " TO " + dateEndNew + "]";
-				solrQuery.addFilterQuery(fq);
-				try {
-					responseSolr = solr.query(solrQuery);
-				} catch (SolrServerException ex) {
-					ex.printStackTrace();
+            }
+			int invalidDocs = 0;
+			SolrDocumentList documents = new SolrDocumentList();
+			for(SolrDocument doc : responseSolr.getResults()){ /*Iterate Results*/
+				if(flString.equals("") || flString.contains("imgSrcBase64")){
+					byte[] bytesImgSrc64 = (byte[]) doc.getFieldValue("imgSrcBase64");
+					if(bytesImgSrc64 == null){
+						LOG.debug("Null image");
+						doc.setField("imgSrcBase64", "");
+					} else {
+						byte[] encodedImgSrc64 = Base64.getEncoder().encode(bytesImgSrc64);
+						String imgSrc64 = new String(encodedImgSrc64);
+						doc.setField("imgSrcBase64", imgSrc64);
+					}
+					documents.add(doc);
+				}
+				else{
+					documents.add(doc);
 				}
 			}
-            int invalidDocs = 0;
-            SolrDocumentList documents = new SolrDocumentList();
-            for (SolrDocument doc : responseSolr.getResults()) { /*Iterate Results*/
-                if (flString.equals("") || flString.contains("imgSrcBase64")) {
-                    byte[] bytesImgSrc64 = (byte[]) doc.getFieldValue("imgSrcBase64");
-                    if (bytesImgSrc64 == null) {
-                        LOG.debug("Null image");
-                        invalidDocs++;
-                        continue;
-                    }
-                    byte[] encodedImgSrc64 = Base64.getEncoder().encode(bytesImgSrc64);
-                    String imgSrc64 = new String(encodedImgSrc64);
-                    doc.setField("imgSrcBase64", imgSrc64);
-                    documents.add(doc);
-                } else {
-                    documents.add(doc);
-                }
-            }
-            int numFound = (int) responseSolr.getResults().getNumFound();
-            int offsetPreviousPage;
-            if (start == 0)
-                offsetPreviousPage = 0;
-            else {
-                offsetPreviousPage = start - limit;
-                offsetPreviousPage = (offsetPreviousPage < 0 ? 0 : offsetPreviousPage);
-            }
-            String previousPage = requestURL.replaceAll("&offset=([^&]+)", "").concat("&offset=" + offsetPreviousPage);
-            int offsetNextPage = start + limit;
-            if (offsetNextPage > numFound) {
-                offsetNextPage = numFound;
-            }
-            String nextPage = requestURL.replaceAll("&offset=([^&]+)", "").concat("&offset=" + offsetNextPage);
-            String linkToMoreFields = requestURL.replaceAll("&more=([^&]+)", "").concat("&more=" + MOREFIELDS);
+			  int numFound = (int) responseSolr.getResults().getNumFound();
+			  int offsetPreviousPage;
+			  if( start == 0 )
+				  offsetPreviousPage = 0;
+			  else {
+				  offsetPreviousPage = start - limit;
+				  offsetPreviousPage = (offsetPreviousPage < 0 ? 0 : offsetPreviousPage);
+			  }
+			  String previousPage = requestURL.replaceAll("&offset=([^&]+)", "").concat("&offset="+offsetPreviousPage);
+			  int offsetNextPage = start + limit;
+			  if(offsetNextPage > numFound){
+				  offsetNextPage = numFound;
+			  }
+			  String nextPage = requestURL.replaceAll("&offset=([^&]+)", "").concat("&offset="+offsetNextPage);
+			  String linkToMoreFields = requestURL.replaceAll("&more=([^&]+)", "").concat("&more="+MOREFIELDS);
 
             imgSearchResults = new ImageSearchResults(numFound, documents.size(), responseSolr.getResults().getStart(), linkToMoreFields, nextPage, previousPage, documents, prettyOutput);
             if (request.getParameter("debug") != null && request.getParameter("debug").equals("on")) {
@@ -392,8 +355,7 @@ public class ImageSearchServlet extends HttpServlet {
             } else {
                 imgSearchResponse = imgSearchResults;
             }
-        } catch (
-                IOException e) {
+        } catch (IOException e) {
             LOG.warn("Search Error", e);
         }
 
@@ -408,14 +370,11 @@ public class ImageSearchServlet extends HttpServlet {
                 jsonSolrResponse = gson.toJson(imgSearchResponse);
             }
 
-        } catch (
-                JsonParseException e) {
+        } catch (JsonParseException e) {
             throw new ServletException(e);
         }
         //TODO:: callback option and setting jsonp content type in that case
-        if (request.getParameter("callback") != null && !request.getParameter("callback").
-
-                equals("")) {
+        if (request.getParameter("callback") != null && !request.getParameter("callback").equals("")) {
             jsonSolrResponse = request.getParameter("callback") + "(" + jsonSolrResponse + ");";
             response.setContentType("text/javascript"); //jsonp
         } else {
@@ -450,7 +409,8 @@ public class ImageSearchServlet extends HttpServlet {
             for (String word : words) {
                 if (word.toLowerCase().startsWith("site:")) {
                     LOG.debug("found site:");
-                    fqStrings.add("pageURL:*" + ClientUtils.escapeQueryChars(word.replace("site:", "")) + "*");
+                    String domain = ClientUtils.escapeQueryChars(word.replace("site:", ""));
+                    fqStrings.add("pageHost:*." + domain + " OR pageHost:" + domain);
                 } else if (word.toLowerCase().startsWith("type:")) {
                     LOG.debug("found type:");
                     String typeWord = word.replace("type:", "");

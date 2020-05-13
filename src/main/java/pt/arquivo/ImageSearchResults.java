@@ -1,8 +1,11 @@
 package pt.arquivo;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.Locale;
 import java.util.Set;
+import java.util.TimeZone;
 
 import org.apache.solr.common.SolrDocument;
 import org.apache.solr.common.SolrDocumentList;
@@ -25,11 +28,13 @@ public class ImageSearchResults {
     public static final String PAGEURL = "pageURL";
     public static final String PAGETSTAMP = "pageTstamp";
     public static final String IMGSRCBASE64 = "imgSrcBase64";
-	public static final String IMGWIDTH = "imgWidth";
-	public static final String IMGHEIGHT = "imgHeight";
+    public static final String IMGWIDTH = "imgWidth";
+    public static final String IMGHEIGHT = "imgHeight";
     public static final String IMGTHUMBNAILBASE64 = "imgThumbnailBase64";
     public static final String WAYBACKADDRESS = "https://arquivo.pt/wayback/";
 
+    private static final SimpleDateFormat FORMAT_IN = new SimpleDateFormat("yyyyMMddHHmmss");
+    private static final SimpleDateFormat FORMAT_OUT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX", Locale.US);
 
     SolrDocumentList responseItems;
 
@@ -47,6 +52,10 @@ public class ImageSearchResults {
         }
         this.offset = offset;
         this.responseItems = parseDocuments(responseItems);
+
+        TimeZone zone = TimeZone.getTimeZone("GMT");
+        FORMAT_IN.setTimeZone(zone);
+        FORMAT_OUT.setTimeZone(zone);
     }
 
     private SolrDocumentList parseDocuments(SolrDocumentList response_items) {
@@ -59,20 +68,14 @@ public class ImageSearchResults {
             current = response_items.get(i);
             Set<String> keyNames = current.keySet();
             for (String key : keyNames) {
-                if (key.equals(IMAGETSTAMP)) {
-                    imgTstamps = (ArrayList<Long>) current.getFieldValue(IMAGETSTAMP);
-                    newDocument.addField(IMAGETSTAMP, imgTstamps.get(0));
-                } else if (key.equals(SAFE)) {
+                if (key.equals(SAFE)) {
                     newDocument.addField(SAFE, 1.0f - (float) current.getFieldValue(SAFE));
+                } else if (key.equals(PAGETSTAMP)) {
+                    newDocument.addField(PAGETSTAMP, FORMAT_IN.format(current.getFieldValue(PAGETSTAMP)));
+                } else if (key.equals(IMAGETSTAMP)) {
+                    newDocument.addField(IMAGETSTAMP, FORMAT_IN.format(current.getFieldValue(IMAGETSTAMP)));
                 } else if (key.equals(IMGSRCBASE64)) {
                     newDocument.addField(IMGTHUMBNAILBASE64, current.getFieldValue(IMGSRCBASE64));
-				} else if (key.equals(IMGWIDTH)) {
-					newDocument.addField(IMGWIDTH, (new Float(""+current.getFieldValue(IMGWIDTH))).intValue());
-				} else if (key.equals(IMGHEIGHT)) {
-                    newDocument.addField(IMGHEIGHT, (new Float(""+current.getFieldValue(IMGHEIGHT))).intValue());
-                } else if (key.equals(IMAGESRC)) {
-                    List<String> urls = (List<String>) current.getFieldValue(IMAGESRC);
-                    newDocument.addField(IMAGESRC, urls.get(0));
                 } else {
                     newDocument.addField(key, current.getFieldValue(key));
                 }
