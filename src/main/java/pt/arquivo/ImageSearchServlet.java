@@ -56,8 +56,16 @@ public class ImageSearchServlet extends HttpServlet {
     private static final SimpleDateFormat FORMAT_IN = new SimpleDateFormat("yyyyMMddHHmmss");
     private static final SimpleDateFormat FORMAT_OUT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX", Locale.US);
     Calendar DATE_END = new GregorianCalendar();
-    private static final String DEFAULT_FL_STRING = "imgDigest,imgSrc,imgMimeType,imgHeight,imgWidth,imgTstamp,imgTitle,imgAlt,pageURL,pageTstamp,pageTitle,collection";
+    private static final String DEFAULT_FL_STRING = "imgDigest,imgSrc,imgMimeType,imgHeight,imgWidth,imgTstamp,imgTitle,imgAlt,imgCaption,pageURL,pageTstamp,pageTitle,collection";
     private static final String MOREFIELDS = "imgThumbnailBase64,imgSrcURLDigest,imgDigest,pageProtocol,pageHost,pageImages,safe";
+    private static final Map<String, Integer> DEFAULT_QUERY_FIELDS = new HashMap<String, Integer>() {{
+        put("imgTitle", 4);
+        put("imgAlt", 3);
+        put("imgCaption", 3);
+        put("imgSrcTokens", 2);
+        put("pageTitle", 1);
+        put("pageURLTokens", 1);
+    }};
 
     private ArrayList<String> fqStrings;
     private String q;
@@ -286,15 +294,31 @@ public class ImageSearchServlet extends HttpServlet {
 
             solrQuery.set("defType", "edismax");
 
-            solrQuery.set("qf", "imgTitle^4 imgAlt^3 imgSrcTokens^2 pageTitle pageURLTokens");
+            StringBuilder qs = new StringBuilder();
+            for (Map.Entry<String, Integer> entry : DEFAULT_QUERY_FIELDS.entrySet())
+                qs.append(String.format("%s^%d ", entry.getKey(), entry.getValue()));
+            solrQuery.set("qf", qs.toString());
 
-            solrQuery.set("pf", "imgTitle^4000 imgAlt^3000 imgSrcTokens^2000 pageTitle^1000 pageURLTokens^1000");
+
+            qs = new StringBuilder();
+            for (Map.Entry<String, Integer> entry : DEFAULT_QUERY_FIELDS.entrySet())
+                qs.append(String.format("%s^%d ", entry.getKey(), entry.getValue()*1000));
+
+            solrQuery.set("pf", qs.toString());
             solrQuery.set("ps", 1);
 
-            solrQuery.set("pf2", "imgTitle^400 imgAlt^300 imgSrcTokens^200 pageTitle^100 pageURLTokens^100");
+            qs = new StringBuilder();
+            for (Map.Entry<String, Integer> entry : DEFAULT_QUERY_FIELDS.entrySet())
+                qs.append(String.format("%s^%d ", entry.getKey(), entry.getValue()*100));
+
+            solrQuery.set("pf2", qs.toString());
             solrQuery.set("ps2", 2);
 
-            solrQuery.set("pf3", "imgTitle^40 imgAlt^30 imgSrcTokens^20 pageTitle^10 pageURLTokens^10");
+            qs = new StringBuilder();
+            for (Map.Entry<String, Integer> entry : DEFAULT_QUERY_FIELDS.entrySet())
+                qs.append(String.format("%s^%d ", entry.getKey(), entry.getValue()*10));
+
+            solrQuery.set("pf3", qs.toString());
             solrQuery.set("ps3", 3);
 
 
