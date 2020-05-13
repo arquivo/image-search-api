@@ -242,6 +242,11 @@ public class ImageSearchServlet extends HttpServlet {
         if (request.getParameter("siteSearch") != null) {
             fqStrings.add("pageURL:*" + ClientUtils.escapeQueryChars(request.getParameter("siteSearch")) + "*");
         }
+        String getDuplicates = request.getParameter("duplicates");
+        if (!"off".equals(getDuplicates)) {
+            fqStrings.add("{!collapse field=imgDigest}");
+        }
+
         String requestedCollection = request.getParameter("collection");
         if (requestedCollection != null && requestedCollection.length() > 0) {
             fqStrings.add(Arrays.asList(requestedCollection.split(",")).stream().map(c -> "collection:" + c).collect(Collectors.joining(" OR ")));
@@ -443,7 +448,7 @@ public class ImageSearchServlet extends HttpServlet {
 
     private String checkSpecialOperators() {
         LOG.debug("checking special operators");
-        if (q.contains("site:") || q.contains("type:") || q.contains("safe:") || q.contains("size:")) { /*query has a special operator we need to deal with it*/
+        if (q.contains("site:") || q.contains("type:") || q.contains("safe:") || q.contains("size:") || q.contains("duplicates:")) { /*query has a special operator we need to deal with it*/
             LOG.debug("found special operator");
             String[] words = q.split(" ");
             ArrayList<String> cleanWords = new ArrayList<String>();
@@ -461,6 +466,12 @@ public class ImageSearchServlet extends HttpServlet {
                         } else {
                             fqStrings.add("imgMimeType: image/" + typeWord);
                         }
+                    }
+                } else if (word.toLowerCase().startsWith("duplicates:")) {
+                    LOG.debug("found duplicates:");
+                    String safeWord = word.replace("duplicates", "");
+                    if (!safeWord.toLowerCase().equals("on")) {
+                        fqStrings.add("{!collapse field=imgDigest}");
                     }
                 } else if (word.toLowerCase().startsWith("safe:")) {
                     LOG.debug("found safe:");
