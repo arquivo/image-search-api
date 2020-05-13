@@ -56,7 +56,7 @@ public class ImageSearchServlet extends HttpServlet {
     private static final SimpleDateFormat FORMAT_IN = new SimpleDateFormat("yyyyMMddHHmmss");
     private static final SimpleDateFormat FORMAT_OUT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX", Locale.US);
     Calendar DATE_END = new GregorianCalendar();
-    private static final String DEFAULT_FL_STRING = "imgSrc,imgMimeType,imgHeight,imgWidth,imgTstamp,imgTitle,imgAlt,pageURL,pageTstamp,pageTitle,collection";
+    private static final String DEFAULT_FL_STRING = "imgDigest,imgSrc,imgMimeType,imgHeight,imgWidth,imgTstamp,imgTitle,imgAlt,pageURL,pageTstamp,pageTitle,collection";
     private static final String MOREFIELDS = "imgThumbnailBase64,imgSrcURLDigest,imgDigest,pageProtocol,pageHost,pageImages,safe";
 
     private ArrayList<String> fqStrings;
@@ -321,7 +321,24 @@ public class ImageSearchServlet extends HttpServlet {
 					byte[] bytesImgSrc64 = (byte[]) doc.getFieldValue("imgSrcBase64");
 					if(bytesImgSrc64 == null){
 						LOG.debug("Null image");
-						doc.setField("imgSrcBase64", "");
+                        SolrQuery solrImgQuery = new SolrQuery();
+                        String imgDigest = (String) doc.getFieldValue("imgDigest");
+                        solrImgQuery.setQuery("type:image && imgDigest:" + imgDigest);
+                        solrImgQuery.set("fl", "imgSrcBase64");
+                        solrImgQuery.setRows(1);
+                        QueryResponse responseImgSolr = null;
+                        try {
+                            responseImgSolr = solr.query(solrImgQuery);
+                        } catch (SolrServerException e) {
+                            LOG.debug("Solr Server Exception : " + e);
+                        }
+                        String imgSrc64 = "";
+                        for(SolrDocument docImg : responseImgSolr.getResults()) {
+                            bytesImgSrc64 = (byte[]) docImg.getFieldValue("imgSrcBase64");
+                            byte[] encodedImgSrc64 = Base64.getEncoder().encode(bytesImgSrc64);
+                            imgSrc64 = new String(encodedImgSrc64);
+                        }
+                        doc.setField("imgSrcBase64", imgSrc64);
 					} else {
 						byte[] encodedImgSrc64 = Base64.getEncoder().encode(bytesImgSrc64);
 						String imgSrc64 = new String(encodedImgSrc64);
