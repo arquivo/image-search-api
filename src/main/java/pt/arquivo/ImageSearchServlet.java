@@ -243,7 +243,7 @@ public class ImageSearchServlet extends HttpServlet {
             fqStrings.add("pageURL:*" + ClientUtils.escapeQueryChars(request.getParameter("siteSearch")) + "*");
         }
         String getDuplicates = request.getParameter("duplicates");
-        if (!"off".equals(getDuplicates)) {
+        if (!"on".equals(getDuplicates)) {
             fqStrings.add("{!collapse field=imgDigest}");
         }
 
@@ -469,7 +469,10 @@ public class ImageSearchServlet extends HttpServlet {
                     }
                 } else if (word.toLowerCase().startsWith("duplicates:")) {
                     LOG.debug("found duplicates:");
-                    String safeWord = word.replace("duplicates", "");
+                    String safeWord = word.replace("duplicates:", "");
+                    if (safeWord.toLowerCase().equals("off") || safeWord.toLowerCase().equals("on")){
+                        fqStrings.remove("{!collapse field=imgDigest}");
+                    }
                     if (!safeWord.toLowerCase().equals("on")) {
                         fqStrings.add("{!collapse field=imgDigest}");
                     }
@@ -477,7 +480,7 @@ public class ImageSearchServlet extends HttpServlet {
                     LOG.debug("found safe:");
                     String safeWord = word.replace("safe:", "");
                     if (safeWord.toLowerCase().equals("off") || safeWord.toLowerCase().equals("on")) {
-                        removeAnySafeFqString();
+                        removeMatchingFqString("safe");
                     }
                     if (!safeWord.toLowerCase().equals("off")) {
                         fqStrings.add("safe:[0 TO 0.49]"); /*Default behaviour is to limit safe score from 0 -> 0.49; else show all images*/
@@ -509,14 +512,13 @@ public class ImageSearchServlet extends HttpServlet {
     }
 
 
-    private void removeAnySafeFqString() {
+    private void removeMatchingFqString(String field) {
         for (int i = 0; i < fqStrings.size(); i++) {
-            if (fqStrings.get(i).startsWith("safe")) {
+            if (fqStrings.get(i).startsWith(field)) {
                 fqStrings.remove(i);
             }
         }
     }
-
 
     /**
      * Converting a string to an integer, if it is not possible, returns a defaultVal value
