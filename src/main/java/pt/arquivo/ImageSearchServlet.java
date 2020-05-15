@@ -246,7 +246,8 @@ public class ImageSearchServlet extends HttpServlet {
 			  String domain = ClientUtils.escapeQueryChars(request.getParameter("siteSearch"));
 			  if (domain.startsWith("www."))
 				  domain = domain.substring(4);
-			  fqStrings.add("pageHost:*." + domain + " OR pageHost:" + domain);
+			  if (!domain.isEmpty())
+			  	fqStrings.add("pageHost:*." + domain + " OR pageHost:" + domain);
 	      }
 	      String requestedCollection = request.getParameter( "collection" );
 		  if ( requestedCollection != null && requestedCollection.length() > 0 ) {
@@ -431,7 +432,8 @@ public class ImageSearchServlet extends HttpServlet {
 					String domain = ClientUtils.escapeQueryChars(word.replace("site:", ""));
 					if (domain.startsWith("www."))
 						domain = domain.substring(4);
-					fqStrings.add("pageHost:*." + domain + " OR pageHost:" + domain);
+					if (!domain.isEmpty())
+						fqStrings.add("pageHost:*." + domain + " OR pageHost:" + domain);
 				}else if (word.toLowerCase().startsWith("type:")){
 					LOG.debug("found type:");
 					String typeWord = word.replace("type:", "");
