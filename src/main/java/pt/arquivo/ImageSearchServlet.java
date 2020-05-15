@@ -240,7 +240,10 @@ public class ImageSearchServlet extends HttpServlet {
             flString += DEFAULT_FL_STRING;
         }
         if (request.getParameter("siteSearch") != null) {
-            fqStrings.add("pageURL:*" + ClientUtils.escapeQueryChars(request.getParameter("siteSearch")) + "*");
+			String domain = ClientUtils.escapeQueryChars(request.getParameter("siteSearch"));
+			if (domain.startsWith("www."))
+				domain = domain.substring(4);
+			fqStrings.add("pageHost:*." + domain + " OR pageHost:" + domain);
         }
         String getDuplicates = request.getParameter("duplicates");
         if (!"on".equals(getDuplicates)) {
@@ -455,8 +458,10 @@ public class ImageSearchServlet extends HttpServlet {
             for (String word : words) {
                 if (word.toLowerCase().startsWith("site:")) {
                     LOG.debug("found site:");
-                    String domain = ClientUtils.escapeQueryChars(word.replace("site:", ""));
-                    fqStrings.add("pageHost:*." + domain + " OR pageHost:" + domain);
+					String domain = ClientUtils.escapeQueryChars(word.replace("site:", ""));
+					if (domain.startsWith("www."))
+						domain = domain.substring(4);
+					fqStrings.add("pageHost:*." + domain + " OR pageHost:" + domain);
                 } else if (word.toLowerCase().startsWith("type:")) {
                     LOG.debug("found type:");
                     String typeWord = word.replace("type:", "");
