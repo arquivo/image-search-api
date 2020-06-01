@@ -372,11 +372,11 @@ public class ImageSearchServlet extends HttpServlet {
             } else {
                 imgSearchResponse = imgSearchResults;
             }
-        } catch (IOException | HttpSolrClient.RemoteSolrException | SolrServerException e) {
-            LOG.error("Solr Error", e, e.getMessage());
-            imgSearchResponse = new ImageSearchErrorResponse(e);
+        //} catch (IOException | HttpSolrClient.RemoteSolrException | SolrServerException e) {
+        //    LOG.error(e.getClass().getCanonicalName(), e);
+        //    imgSearchResponse = new ImageSearchErrorResponse(e);
         } catch (Throwable e) {
-            LOG.error("General Error", e, e.getMessage());
+            LOG.error(e.getClass().getCanonicalName(), e);
             imgSearchResponse = new ImageSearchErrorResponse(e);
         } finally {
             if (solr != null)
