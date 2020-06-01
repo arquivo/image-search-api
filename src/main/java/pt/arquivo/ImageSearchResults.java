@@ -28,8 +28,6 @@ public class ImageSearchResults {
     public static final String PAGEURL = "pageURL";
     public static final String PAGETSTAMP = "pageTstamp";
     public static final String IMGSRCBASE64 = "imgSrcBase64";
-    public static final String IMGWIDTH = "imgWidth";
-    public static final String IMGHEIGHT = "imgHeight";
     public static final String IMGTHUMBNAILBASE64 = "imgThumbnailBase64";
     public static final String WAYBACKADDRESS = "https://arquivo.pt/wayback/";
 
@@ -61,23 +59,28 @@ public class ImageSearchResults {
     private SolrDocumentList parseDocuments(SolrDocumentList response_items) {
         SolrDocumentList processedDocs = new SolrDocumentList();
         SolrDocument current = null;
-        ArrayList<Long> imgTstamps = null;
 
         for (int i = 0; i < response_items.size(); i++) {
             SolrDocument newDocument = new SolrDocument();
             current = response_items.get(i);
             Set<String> keyNames = current.keySet();
             for (String key : keyNames) {
-                if (key.equals(SAFE)) {
-                    newDocument.addField(SAFE, 1.0f - (float) current.getFieldValue(SAFE));
-                } else if (key.equals(PAGETSTAMP)) {
-                    newDocument.addField(PAGETSTAMP, FORMAT_IN.format(current.getFieldValue(PAGETSTAMP)));
-                } else if (key.equals(IMAGETSTAMP)) {
-                    newDocument.addField(IMAGETSTAMP, FORMAT_IN.format(current.getFieldValue(IMAGETSTAMP)));
-                } else if (key.equals(IMGSRCBASE64)) {
-                    newDocument.addField(IMGTHUMBNAILBASE64, current.getFieldValue(IMGSRCBASE64));
-                } else {
-                    newDocument.addField(key, current.getFieldValue(key));
+                switch (key) {
+                    case SAFE:
+                        newDocument.addField(SAFE, 1.0f - (float) current.getFieldValue(SAFE));
+                        break;
+                    case PAGETSTAMP:
+                        newDocument.addField(PAGETSTAMP, FORMAT_IN.format(current.getFieldValue(PAGETSTAMP)));
+                        break;
+                    case IMAGETSTAMP:
+                        newDocument.addField(IMAGETSTAMP, FORMAT_IN.format(current.getFieldValue(IMAGETSTAMP)));
+                        break;
+                    case IMGSRCBASE64:
+                        newDocument.addField(IMGTHUMBNAILBASE64, current.getFieldValue(IMGSRCBASE64));
+                        break;
+                    default:
+                        newDocument.addField(key, current.getFieldValue(key));
+                        break;
                 }
             }
             if (newDocument.containsKey(IMAGESRC) && newDocument.containsKey(IMAGETSTAMP)) {

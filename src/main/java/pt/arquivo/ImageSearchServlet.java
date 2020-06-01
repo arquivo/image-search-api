@@ -30,6 +30,8 @@ import org.slf4j.LoggerFactory;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParseException;
+import pt.arquivo.responses.ImageSearchErrorResponse;
+import pt.arquivo.responses.ImageSearchResponseDebug;
 
 /**
  * ImageSearch API Back-End.
@@ -240,11 +242,11 @@ public class ImageSearchServlet extends HttpServlet {
             flString += DEFAULT_FL_STRING;
         }
         if (request.getParameter("siteSearch") != null) {
-			String domain = ClientUtils.escapeQueryChars(request.getParameter("siteSearch"));
-			if (domain.startsWith("www."))
-				domain = domain.substring(4);
-			if (!domain.isEmpty())
-				fqStrings.add("pageHost:*." + domain + " OR pageHost:" + domain);
+            String domain = ClientUtils.escapeQueryChars(request.getParameter("siteSearch"));
+            if (domain.startsWith("www."))
+                domain = domain.substring(4);
+            if (!domain.isEmpty())
+                fqStrings.add("pageHost:*." + domain + " OR pageHost:" + domain);
         }
         String getDuplicates = request.getParameter("duplicates");
         if (!"on".equals(getDuplicates)) {
@@ -270,10 +272,10 @@ public class ImageSearchServlet extends HttpServlet {
 
         startTime = System.currentTimeMillis();
         //execute the query
+        SolrClient solr = null;
         try {
             LOG.debug("Wayback HOST: " + collectionsHost);
             LOG.debug("SOLR HOST: " + solrHost);
-            SolrClient solr;
 
 
             if (solrHost.contains(",")) {
@@ -311,21 +313,21 @@ public class ImageSearchServlet extends HttpServlet {
 
             qs = new StringBuilder();
             for (Map.Entry<String, Integer> entry : DEFAULT_QUERY_FIELDS.entrySet())
-                qs.append(String.format("%s^%d ", entry.getKey(), entry.getValue()*1000));
+                qs.append(String.format("%s^%d ", entry.getKey(), entry.getValue() * 1000));
 
             solrQuery.set("pf", qs.toString());
             solrQuery.set("ps", 1);
 
             qs = new StringBuilder();
             for (Map.Entry<String, Integer> entry : DEFAULT_QUERY_FIELDS.entrySet())
-                qs.append(String.format("%s^%d ", entry.getKey(), entry.getValue()*100));
+                qs.append(String.format("%s^%d ", entry.getKey(), entry.getValue() * 100));
 
             solrQuery.set("pf2", qs.toString());
             solrQuery.set("ps2", 2);
 
             qs = new StringBuilder();
             for (Map.Entry<String, Integer> entry : DEFAULT_QUERY_FIELDS.entrySet())
-                qs.append(String.format("%s^%d ", entry.getKey(), entry.getValue()*10));
+                qs.append(String.format("%s^%d ", entry.getKey(), entry.getValue() * 10));
 
             solrQuery.set("pf3", qs.toString());
             solrQuery.set("ps3", 3);
@@ -342,62 +344,27 @@ public class ImageSearchServlet extends HttpServlet {
             LOG.debug("SOLR Query: " + solrQuery);
 
             QueryResponse responseSolr = null;
-            try {
-                responseSolr = solr.query(solrQuery);
-            } catch (SolrServerException e) {
-                LOG.debug("Solr Server Exception : " + e);
+
+            responseSolr = solr.query(solrQuery);
+
+            SolrDocumentList documents = new SolrDocumentList();
+            documents.addAll(responseSolr.getResults());
+
+            int numFound = (int) responseSolr.getResults().getNumFound();
+            int offsetPreviousPage;
+            if (start == 0)
+                offsetPreviousPage = 0;
+            else {
+                offsetPreviousPage = start - limit;
+                offsetPreviousPage = Math.max(offsetPreviousPage, 0);
             }
-			int invalidDocs = 0;
-			SolrDocumentList documents = new SolrDocumentList();
-			for(SolrDocument doc : responseSolr.getResults()){ /*Iterate Results*/
-				if(flString.equals("") || flString.contains("imgSrcBase64")){
-					byte[] bytesImgSrc64 = (byte[]) doc.getFieldValue("imgSrcBase64");
-					if(bytesImgSrc64 == null){
-						LOG.debug("Null image");
-                        SolrQuery solrImgQuery = new SolrQuery();
-                        String imgDigest = (String) doc.getFieldValue("imgDigest");
-                        solrImgQuery.setQuery("type:image && imgDigest:" + imgDigest);
-                        solrImgQuery.set("fl", "imgSrcBase64");
-                        solrImgQuery.setRows(1);
-                        QueryResponse responseImgSolr = null;
-                        try {
-                            responseImgSolr = solr.query(solrImgQuery);
-                        } catch (SolrServerException e) {
-                            LOG.debug("Solr Server Exception : " + e);
-                        }
-                        String imgSrc64 = "";
-                        for(SolrDocument docImg : responseImgSolr.getResults()) {
-                            bytesImgSrc64 = (byte[]) docImg.getFieldValue("imgSrcBase64");
-                            byte[] encodedImgSrc64 = Base64.getEncoder().encode(bytesImgSrc64);
-                            imgSrc64 = new String(encodedImgSrc64);
-                        }
-                        doc.setField("imgSrcBase64", imgSrc64);
-					} else {
-						byte[] encodedImgSrc64 = Base64.getEncoder().encode(bytesImgSrc64);
-						String imgSrc64 = new String(encodedImgSrc64);
-						doc.setField("imgSrcBase64", imgSrc64);
-					}
-					documents.add(doc);
-				}
-				else{
-					documents.add(doc);
-				}
-			}
-			  int numFound = (int) responseSolr.getResults().getNumFound();
-			  int offsetPreviousPage;
-			  if( start == 0 )
-				  offsetPreviousPage = 0;
-			  else {
-				  offsetPreviousPage = start - limit;
-				  offsetPreviousPage = (offsetPreviousPage < 0 ? 0 : offsetPreviousPage);
-			  }
-			  String previousPage = requestURL.replaceAll("&offset=([^&]+)", "").concat("&offset="+offsetPreviousPage);
-			  int offsetNextPage = start + limit;
-			  if(offsetNextPage > numFound){
-				  offsetNextPage = numFound;
-			  }
-			  String nextPage = requestURL.replaceAll("&offset=([^&]+)", "").concat("&offset="+offsetNextPage);
-			  String linkToMoreFields = requestURL.replaceAll("&more=([^&]+)", "").concat("&more="+MOREFIELDS);
+            String previousPage = requestURL.replaceAll("&offset=([^&]+)", "").concat("&offset=" + offsetPreviousPage);
+            int offsetNextPage = start + limit;
+            if (offsetNextPage > numFound) {
+                offsetNextPage = numFound;
+            }
+            String nextPage = requestURL.replaceAll("&offset=([^&]+)", "").concat("&offset=" + offsetNextPage);
+            String linkToMoreFields = requestURL.replaceAll("&more=([^&]+)", "").concat("&more=" + MOREFIELDS);
 
             imgSearchResults = new ImageSearchResults(numFound, documents.size(), responseSolr.getResults().getStart(), linkToMoreFields, nextPage, previousPage, documents, prettyOutput);
             if (request.getParameter("debug") != null && request.getParameter("debug").equals("on")) {
@@ -405,20 +372,27 @@ public class ImageSearchServlet extends HttpServlet {
             } else {
                 imgSearchResponse = imgSearchResults;
             }
-        } catch (IOException e) {
-            LOG.warn("Search Error", e);
+        } catch (IOException | HttpSolrClient.RemoteSolrException | SolrServerException e) {
+            LOG.warn("Solr Error", e);
+            imgSearchResponse = new ImageSearchErrorResponse(e);
+        } catch (Throwable e) {
+            LOG.warn("General Error", e);
+        } finally {
+            if (solr != null)
+                solr.close();
         }
+
 
         endTime = System.currentTimeMillis();
 
         try {
+            Gson gson = null;
             if (prettyOutput) {
-                Gson gson = new GsonBuilder().disableHtmlEscaping().setPrettyPrinting().create();
-                jsonSolrResponse = gson.toJson(imgSearchResponse);
+                gson = new GsonBuilder().disableHtmlEscaping().setPrettyPrinting().create();
             } else {
-                Gson gson = new GsonBuilder().disableHtmlEscaping().create();
-                jsonSolrResponse = gson.toJson(imgSearchResponse);
+                gson = new GsonBuilder().disableHtmlEscaping().create();
             }
+            jsonSolrResponse = gson.toJson(imgSearchResponse);
 
         } catch (JsonParseException e) {
             throw new ServletException(e);
@@ -459,11 +433,11 @@ public class ImageSearchServlet extends HttpServlet {
             for (String word : words) {
                 if (word.toLowerCase().startsWith("site:")) {
                     LOG.debug("found site:");
-					String domain = ClientUtils.escapeQueryChars(word.replace("site:", ""));
-					if (domain.startsWith("www."))
-						domain = domain.substring(4);
-					if (!domain.isEmpty())
-						fqStrings.add("pageHost:*." + domain + " OR pageHost:" + domain);
+                    String domain = ClientUtils.escapeQueryChars(word.replace("site:", ""));
+                    if (domain.startsWith("www."))
+                        domain = domain.substring(4);
+                    if (!domain.isEmpty())
+                        fqStrings.add("pageHost:*." + domain + " OR pageHost:" + domain);
                 } else if (word.toLowerCase().startsWith("type:")) {
                     LOG.debug("found type:");
                     String typeWord = word.replace("type:", "");
@@ -477,7 +451,7 @@ public class ImageSearchServlet extends HttpServlet {
                 } else if (word.toLowerCase().startsWith("duplicates:")) {
                     LOG.debug("found duplicates:");
                     String safeWord = word.replace("duplicates:", "");
-                    if (safeWord.toLowerCase().equals("off") || safeWord.toLowerCase().equals("on")){
+                    if (safeWord.toLowerCase().equals("off") || safeWord.toLowerCase().equals("on")) {
                         fqStrings.remove("{!collapse field=imgDigest}");
                     }
                     if (!safeWord.toLowerCase().equals("on")) {
