@@ -66,6 +66,7 @@ public class ImageSearchServlet extends HttpServlet {
     }};
 
     private ArrayList<String> fqStrings;
+    private ArrayList<Map.Entry<String, SolrQuery.ORDER>> sortStrings;
     private String q;
 
     /**
@@ -107,7 +108,8 @@ public class ImageSearchServlet extends HttpServlet {
      */
     public void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        fqStrings = new ArrayList<String>();
+        fqStrings = new ArrayList<>();
+        sortStrings = new ArrayList<>();
         LOG.debug("[doGet] query request from " + request.getRemoteAddr());
         String requestURL = request.getScheme() + "://" +
                 request.getServerName() +
@@ -259,7 +261,7 @@ public class ImageSearchServlet extends HttpServlet {
          * /imagesearch?q=sapo%20site:sapo.pt%20type:jpeg instead of
          * /imagesearch?q=sapo&siteSearch=sapo.pt&type=jpeg */
         q = checkSpecialOperators();
-
+        q = checkSortOperator();
         //Pretty print in output message
         String prettyPrintParameter = request.getParameter("prettyPrint");
         boolean prettyOutput = false;
@@ -333,9 +335,15 @@ public class ImageSearchServlet extends HttpServlet {
             solrQuery.setStart(start);
             solrQuery.set("fl", flString);
 
-            solrQuery.addSort("score", SolrQuery.ORDER.desc);
-            solrQuery.addSort("imgTstamp", SolrQuery.ORDER.asc);
-            solrQuery.addSort("imgSrc", SolrQuery.ORDER.asc);
+
+            if (sortStrings.isEmpty()) {
+                solrQuery.addSort("score", SolrQuery.ORDER.desc);
+                solrQuery.addSort("imgTstamp", SolrQuery.ORDER.asc);
+                solrQuery.addSort("imgSrc", SolrQuery.ORDER.asc);
+            } else {
+                for (Map.Entry<String,SolrQuery.ORDER> e: sortStrings)
+                    solrQuery.addSort(e.getKey(), e.getValue());
+            }
 
             LOG.debug("SOLR Query: " + solrQuery);
 
@@ -368,9 +376,9 @@ public class ImageSearchServlet extends HttpServlet {
             } else {
                 imgSearchResponse = imgSearchResults;
             }
-        //} catch (IOException | HttpSolrClient.RemoteSolrException | SolrServerException e) {
-        //    LOG.error(e.getClass().getCanonicalName(), e);
-        //    imgSearchResponse = new ImageSearchErrorResponse(e);
+            //} catch (IOException | HttpSolrClient.RemoteSolrException | SolrServerException e) {
+            //    LOG.error(e.getClass().getCanonicalName(), e);
+            //    imgSearchResponse = new ImageSearchErrorResponse(e);
         } catch (Throwable e) {
             LOG.error(e.getClass().getCanonicalName(), e);
             imgSearchResponse = new ImageSearchErrorResponse(e);
@@ -480,6 +488,32 @@ public class ImageSearchServlet extends HttpServlet {
                         }
                     }
 
+                } else {
+                    LOG.debug(" found clean word");
+                    cleanWords.add(word);
+                }
+            }
+            return String.join(" ", cleanWords);
+        } else return q;
+    }
+
+    private String checkSortOperator() {
+        LOG.debug("checking sort operators");
+        if (q.contains("sort:")) {
+            LOG.debug("found sort operator");
+            String[] words = q.split(" ");
+            ArrayList<String> cleanWords = new ArrayList<String>();
+            for (String word : words) {
+                //TODO: validate user input
+                if (word.toLowerCase().startsWith("sort:")) {
+                    LOG.debug("found sort:");
+                    String[] sortInstances = ClientUtils.escapeQueryChars(word.replace("sort:", "")).split(";");
+                    for (String instance : sortInstances) {
+                        String[] sortInstance = instance.split(",");
+                        String field = sortInstance[0];
+                        String dir = sortInstance[1];
+                        sortStrings.add(new AbstractMap.SimpleEntry<>(field, SolrQuery.ORDER.valueOf(dir)));
+                    }
                 } else {
                     LOG.debug(" found clean word");
                     cleanWords.add(word);
