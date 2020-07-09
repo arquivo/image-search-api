@@ -431,7 +431,7 @@ public class ImageSearchServlet extends HttpServlet {
 
     private String checkSpecialOperators() {
         LOG.debug("checking special operators");
-        if (q.contains("site:") || q.contains("type:") || q.contains("safe:") || q.contains("size:") || q.contains("duplicates:")) { /*query has a special operator we need to deal with it*/
+        if (q.contains("site:") || q.contains("type:") || q.contains("safe:") || q.contains("size:") || q.contains("duplicates:") || q.contains("collapse:")) { /*query has a special operator we need to deal with it*/
             LOG.debug("found special operator");
             String[] words = q.split(" ");
             ArrayList<String> cleanWords = new ArrayList<String>();
@@ -443,6 +443,11 @@ public class ImageSearchServlet extends HttpServlet {
                         domain = domain.substring(4);
                     if (!domain.isEmpty())
                         fqStrings.add("pageHost:*." + domain + " OR pageHost:" + domain);
+                } else if (word.toLowerCase().startsWith("collapse:")) {
+                    LOG.debug("found collapse:");
+                    fqStrings.remove("{!collapse field=imgDigest}");
+                    String collapse = ClientUtils.escapeQueryChars(word.replace("collapse:", ""));
+                    fqStrings.add(String.format("{!collapse field=%s}", collapse));
                 } else if (word.toLowerCase().startsWith("type:")) {
                     LOG.debug("found type:");
                     String typeWord = word.replace("type:", "");
