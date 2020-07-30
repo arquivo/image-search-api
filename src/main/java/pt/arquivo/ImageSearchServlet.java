@@ -5,13 +5,7 @@ import java.io.PrintWriter;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.GregorianCalendar;
-import java.util.TimeZone;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import javax.servlet.ServletConfig;
@@ -269,6 +263,7 @@ public class ImageSearchServlet extends HttpServlet {
         startTime = System.currentTimeMillis();
         //execute the query
         SolrClient solr = null;
+        LinkedList<String> docIds = new LinkedList<>();
 
         try {
             LOG.debug("Wayback HOST: " + collectionsHost);
@@ -331,8 +326,10 @@ public class ImageSearchServlet extends HttpServlet {
                 LOG.debug("Solr Server Exception : " + e);
             }
             int invalidDocs = 0;
+
             SolrDocumentList documents = new SolrDocumentList();
             for (SolrDocument doc : responseSolr.getResults()) { /*Iterate Results*/
+                docIds.push(((ArrayList<Long>)doc.getFieldValue("imgTstamp")).get(0) + "/" + (String)doc.getFieldValue("imgSrc"));
                 if (flString.equals("") || flString.contains("imgSrcBase64")) {
                     byte[] bytesImgSrc64 = (byte[]) doc.getFieldValue("imgSrcBase64");
                     if (bytesImgSrc64 == null) {
@@ -405,12 +402,19 @@ public class ImageSearchServlet extends HttpServlet {
         if (ipAddress == null) {
             ipAddress = request.getRemoteAddr();
         }
+
         LOG.info("[ImageSearch API]" + "\t" + duration + "ms\t" + ipAddress + "\t" + requestURL);
 
         // Get the printwriter object from response to write the required json object to the output stream
         PrintWriter out = response.getWriter();
         out.print(jsonSolrResponse);
         out.flush();
+
+        Gson gson = new GsonBuilder().disableHtmlEscaping().create();
+        String docIdsJSON = gson.toJson(docIds);
+
+        LOG.info("[ImageSearch API] (response)" + "\t" + requestURL + "\tresults:" + docIdsJSON);
+
     }
 
 
