@@ -271,6 +271,8 @@ public class ImageSearchServlet extends HttpServlet {
         startTime = System.currentTimeMillis();
         //execute the query
         SolrClient solr = null;
+        LinkedList<String> docIds = new LinkedList<>();
+
         try {
             LOG.debug("Wayback HOST: " + collectionsHost);
             LOG.debug("SOLR HOST: " + solrHost);
@@ -415,12 +417,19 @@ public class ImageSearchServlet extends HttpServlet {
         if (ipAddress == null) {
             ipAddress = request.getRemoteAddr();
         }
+
         LOG.info("[ImageSearch API]" + "\t" + duration + "ms\t" + ipAddress + "\t" + requestURL);
 
         // Get the printwriter object from response to write the required json object to the output stream
         PrintWriter out = response.getWriter();
         out.print(jsonSolrResponse);
         out.flush();
+
+        Gson gson = new GsonBuilder().disableHtmlEscaping().create();
+        String docIdsJSON = gson.toJson(docIds);
+
+        LOG.info("[ImageSearch API] (response)" + "\t" + requestURL + "\tresults:" + docIdsJSON);
+
     }
 
 
