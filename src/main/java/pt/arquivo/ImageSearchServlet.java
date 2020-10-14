@@ -248,6 +248,11 @@ public class ImageSearchServlet extends HttpServlet {
             fqStrings.add(Arrays.asList(requestedCollection.split(",")).stream().map(c -> "collection:" + c).collect(Collectors.joining(" OR ")));
         }
 
+        String getDuplicates = request.getParameter("duplicates");
+        if (!"on".equals(getDuplicates)) {
+            fqStrings.add("{!collapse field=imgDigest}");
+        }
+
         /*Process operators such as site: type: and site: inside the q parameter*/
         /*Should we allow people to use those operators when calling the api e.g.
          * /imagesearch?q=sapo%20site:sapo.pt%20type:jpeg instead of
@@ -329,7 +334,7 @@ public class ImageSearchServlet extends HttpServlet {
 
             SolrDocumentList documents = new SolrDocumentList();
             for (SolrDocument doc : responseSolr.getResults()) { /*Iterate Results*/
-                docIds.push(((ArrayList<Long>)doc.getFieldValue("imgTstamp")).get(0) + "/" + (String)doc.getFieldValue("imgSrc"));
+                docIds.push(((ArrayList<Long>) doc.getFieldValue("imgTstamp")).get(0) + "/" + (String) doc.getFieldValue("imgSrc"));
                 if (flString.equals("") || flString.contains("imgSrcBase64")) {
                     byte[] bytesImgSrc64 = (byte[]) doc.getFieldValue("imgSrcBase64");
                     if (bytesImgSrc64 == null) {
@@ -425,7 +430,7 @@ public class ImageSearchServlet extends HttpServlet {
 
     private String checkSpecialOperators() {
         LOG.debug("checking special operators");
-        if (q.contains("site:") || q.contains("type:") || q.contains("safe:") || q.contains("size:")) { /*query has a special operator we need to deal with it*/
+        if (q.contains("site:") || q.contains("type:") || q.contains("safe:") || q.contains("size:") || q.contains("duplicates:")) { /*query has a special operator we need to deal with it*/
             LOG.debug("found special operator");
             String[] words = q.split(" ");
             ArrayList<String> cleanWords = new ArrayList<String>();
@@ -471,8 +476,18 @@ public class ImageSearchServlet extends HttpServlet {
                             LOG.debug("lg");
                             fqStrings.add("{!frange l=810001}product(imgHeight,imgWidth)"); /*images bigger than 810000px² of area*/
                         }
-                    }
 
+
+                    }
+                } else if (word.toLowerCase().startsWith("duplicates:")) {
+                    LOG.debug("found duplicates:");
+                    String safeWord = word.replace("duplicates:", "");
+                    if (safeWord.toLowerCase().equals("off") || safeWord.toLowerCase().equals("on")) {
+                        fqStrings.remove("{!collapse field=imgDigest}");
+                    }
+                    if (!safeWord.toLowerCase().equals("on")) {
+                        fqStrings.add("{!collapse field=imgDigest}");
+                    }
                 } else {
                     LOG.debug(" found clean word");
                     cleanWords.add(word);
