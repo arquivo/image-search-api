@@ -1,14 +1,11 @@
 package pt.arquivo;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Locale;
 import java.util.Set;
-import java.util.TimeZone;
 
 import org.apache.solr.common.SolrDocument;
 import org.apache.solr.common.SolrDocumentList;
+
+import static pt.arquivo.APIVersionTranslator.*;
 
 public class ImageSearchResults {
     String serviceName = "Arquivo.pt - image search service.";
@@ -20,28 +17,27 @@ public class ImageSearchResults {
     long totalItems;
     int numberOfResponseItems;
     long offset;
-    public static final String SAFE = "safe";
-    public static final String IMAGETSTAMP = "imgCrawlTimestamp";
-    public static final String IMAGESRC = "imgUrl";
-    public static final String IMAGELINKTOARCHIVE = "imgLinkToArchive";
-    public static final String PAGELINKTOARCHIVE = "pageLinkToArchive";
-    public static final String PAGEURL = "pageUrl";
-    public static final String PAGETSTAMP = "pageCrawlTimestamp";
-    public static final String IMGSRCBASE64 = "imgSrcBase64";
-    public static final String IMGTHUMBNAILBASE64 = "imgThumbnailBase64";
-    public static final String WAYBACKADDRESS = "https://arquivo.pt/wayback/";
+    public static final String V2_SAFE = "safe";
+    public static final String V2_IMAGETSTAMP = "imgCrawlTimestamp";
+    public static final String V2_IMAGEURL = "imgUrl";
+    public static final String V2_IMAGELINKTOARCHIVE = "imgLinkToArchive";
+    public static final String V2_PAGELINKTOARCHIVE = "pageLinkToArchive";
+    public static final String V2_PAGEURL = "pageUrl";
+    public static final String V2_PAGETSTAMP = "pageCrawlTimestamp";
+    public static final String V2_WAYBACKADDRESS = "https://arquivo.pt/wayback/";
 
-    private static final SimpleDateFormat FORMAT_IN = new SimpleDateFormat("yyyyMMddHHmmss");
-    private static final SimpleDateFormat FORMAT_OUT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX", Locale.US);
+
 
     SolrDocumentList responseItems;
 
     public ImageSearchResults(long totalItems, int numberOfResponseItems, long offset, String linkToMoreFields, String nextPage, String previousPage, SolrDocumentList responseItems, boolean documentation) {
         this.nextPage = nextPage;
         this.previousPage = previousPage;
+
         if (documentation) {
             linkToDocumentation = "https://github.com/arquivo/pwa-technologies/wiki/ImageSearch-API-v1-(beta)";
         }
+
         this.linkToMoreFields = linkToMoreFields;
         this.totalItems = totalItems;
         this.numberOfResponseItems = numberOfResponseItems;
@@ -51,43 +47,48 @@ public class ImageSearchResults {
         this.offset = offset;
         this.responseItems = parseDocuments(responseItems);
 
-        TimeZone zone = TimeZone.getTimeZone("GMT");
-        FORMAT_IN.setTimeZone(zone);
-        FORMAT_OUT.setTimeZone(zone);
+
+
     }
 
     private SolrDocumentList parseDocuments(SolrDocumentList response_items) {
         SolrDocumentList processedDocs = new SolrDocumentList();
         SolrDocument current = null;
 
-        for (int i = 0; i < response_items.size(); i++) {
+        for (SolrDocument response_item : response_items) {
             SolrDocument newDocument = new SolrDocument();
-            current = response_items.get(i);
+            current = response_item;
             Set<String> keyNames = current.keySet();
             for (String key : keyNames) {
                 switch (key) {
-                    case SAFE:
-                        newDocument.addField(SAFE, 1.0f - (float) current.getFieldValue(SAFE));
+                    case V2_SAFE:
+                        newDocument.addField(v2Tov1(V2_SAFE), 1.0f - (float) current.getFieldValue(V2_SAFE));
                         break;
-                    case PAGETSTAMP:
-                        newDocument.addField(PAGETSTAMP, FORMAT_IN.format(current.getFieldValue(PAGETSTAMP)));
+                    case V2_PAGETSTAMP:
+                        newDocument.addField(v2Tov1(V2_PAGETSTAMP), V1_DATE_FORMAT.format(current.getFieldValue(V2_PAGETSTAMP)));
                         break;
-                    case IMAGETSTAMP:
-                        newDocument.addField(IMAGETSTAMP, FORMAT_IN.format(current.getFieldValue(IMAGETSTAMP)));
-                        break;
-                    case IMGSRCBASE64:
-                        newDocument.addField(IMGTHUMBNAILBASE64, current.getFieldValue(IMGSRCBASE64));
+                    case V2_IMAGETSTAMP:
+                        newDocument.addField(v2Tov1(V2_IMAGETSTAMP), V1_DATE_FORMAT.format(current.getFieldValue(V2_IMAGETSTAMP)));
                         break;
                     default:
-                        newDocument.addField(key, current.getFieldValue(key));
+                        newDocument.addField(v2Tov1(key), current.getFieldValue(key));
                         break;
                 }
             }
-            if (newDocument.containsKey(IMAGESRC) && newDocument.containsKey(IMAGETSTAMP)) {
-                newDocument.addField(IMAGELINKTOARCHIVE, WAYBACKADDRESS + newDocument.getFieldValue(IMAGETSTAMP) + "im_/" + newDocument.getFieldValue(IMAGESRC));
+            String V1_IMAGEURL = v2Tov1(V2_IMAGEURL);
+            String V1_IMAGETSTAMP = v2Tov1(V2_IMAGETSTAMP);
+            String V1_IMAGELINKTOARCHIVE = v2Tov1(V2_IMAGELINKTOARCHIVE);
+
+            if (newDocument.containsKey(V1_IMAGEURL) && newDocument.containsKey(V1_IMAGETSTAMP)) {
+                newDocument.addField(V1_IMAGELINKTOARCHIVE, V2_WAYBACKADDRESS + newDocument.getFieldValue(V1_IMAGETSTAMP) + "im_/" + newDocument.getFieldValue(V1_IMAGEURL));
             }
-            if (newDocument.containsKey(PAGEURL) && newDocument.containsKey(PAGETSTAMP)) {
-                newDocument.addField(PAGELINKTOARCHIVE, WAYBACKADDRESS + newDocument.getFieldValue(PAGETSTAMP) + "/" + newDocument.getFieldValue(PAGEURL));
+
+            String V1_PAGEURL = v2Tov1(V2_PAGEURL);
+            String V1_PAGETSTAMP = v2Tov1(V2_PAGETSTAMP);
+            String V1_PAGELINKTOARCHIVE = v2Tov1(V2_PAGELINKTOARCHIVE);
+
+            if (newDocument.containsKey(V1_PAGEURL) && newDocument.containsKey(V1_PAGETSTAMP)) {
+                newDocument.addField(V1_PAGELINKTOARCHIVE, V2_WAYBACKADDRESS + newDocument.getFieldValue(V1_PAGETSTAMP) + "/" + newDocument.getFieldValue(V1_PAGEURL));
             }
 
             processedDocs.add(newDocument);
