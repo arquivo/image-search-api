@@ -29,6 +29,9 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static pt.arquivo.ImageSearchResults.IMAGESRC;
+import static pt.arquivo.ImageSearchResults.IMAGETSTAMP;
+
 /**
  * ImageSearch API Back-End.
  * Servlet responsible for returning a json object with the results of the query received in the parameter.
@@ -54,15 +57,15 @@ public class ImageSearchServlet extends HttpServlet {
     private static final SimpleDateFormat FORMAT_IN = new SimpleDateFormat("yyyyMMddHHmmss");
     private static final SimpleDateFormat FORMAT_OUT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX", Locale.US);
     Calendar DATE_END = new GregorianCalendar();
-    private static final String DEFAULT_FL_STRING = "imgDigest,imgSrc,imgMimeType,imgHeight,imgWidth,imgTstamp,imgTitle,imgAlt,imgCaption,pageURL,pageTstamp,pageTitle,collection";
-    private static final String MOREFIELDS = "imgThumbnailBase64,imgSrcURLDigest,imgDigest,pageProtocol,pageHost,pageImages,safe";
+    private static final String DEFAULT_FL_STRING = "imgUrl,imgMimeType,imgHeight,imgWidth,imgCrawlTimestamp,imgTitle,imgAlt,imgCaption,pageUrl,pageCrawlTimestamp,pageTitle,collection";
+    private static final String MOREFIELDS = "imgThumbnailBase64,imgSrcURLDigest,pageProtocol,pageHost,pageImages,safe";
     private static final Map<String, Integer> DEFAULT_QUERY_FIELDS = new HashMap<String, Integer>() {{
         put("imgTitle", 4);
         put("imgAlt", 3);
         put("imgCaption", 3);
-        put("imgSrcTokens", 2);
+        put("imgUrlTokens", 2);
         put("pageTitle", 1);
-        put("pageURLTokens", 1);
+        put("pageUrlTokens", 1);
     }};
 
     private ArrayList<String> fqStrings;
@@ -203,7 +206,7 @@ public class ImageSearchServlet extends HttpServlet {
                 LOG.error("Parse Exception: ", e);
             }
         }
-        fqStrings.add("imgTstamp:[" + dateStart + " TO " + dateEnd + "]");
+        fqStrings.add(IMAGETSTAMP+":[" + dateStart + " TO " + dateEnd + "]");
         safeSearch = request.getParameter("safeSearch");
         if (!"off".equals(safeSearch)) {
             fqStrings.add("safe:[0 TO 0.49]"); /*Default behaviour is to limit safe score from 0 -> 0.49; else show all images*/
@@ -245,10 +248,6 @@ public class ImageSearchServlet extends HttpServlet {
                 domain = domain.substring(4);
             if (!domain.isEmpty())
                 fqStrings.add("pageHost:*." + domain + " OR pageHost:" + domain);
-        }
-        String getDuplicates = request.getParameter("duplicates");
-        if (!"on".equals(getDuplicates)) {
-            fqStrings.add("{!collapse field=imgDigest}");
         }
 
         String requestedCollection = request.getParameter("collection");
@@ -340,8 +339,8 @@ public class ImageSearchServlet extends HttpServlet {
 
             if (sortStrings.isEmpty()) {
                 solrQuery.addSort("score", SolrQuery.ORDER.desc);
-                solrQuery.addSort("imgTstamp", SolrQuery.ORDER.asc);
-                solrQuery.addSort("imgSrc", SolrQuery.ORDER.asc);
+                solrQuery.addSort(IMAGETSTAMP, SolrQuery.ORDER.asc);
+                solrQuery.addSort(IMAGESRC, SolrQuery.ORDER.asc);
             } else {
                 for (Map.Entry<String,SolrQuery.ORDER> e: sortStrings)
                     solrQuery.addSort(e.getKey(), e.getValue());
@@ -454,7 +453,7 @@ public class ImageSearchServlet extends HttpServlet {
                         fqStrings.add("pageHost:*." + domain + " OR pageHost:" + domain);
                 } else if (word.toLowerCase().startsWith("collapse:")) {
                     LOG.debug("found collapse:");
-                    fqStrings.remove("{!collapse field=imgDigest}");
+                    //fqStrings.remove("{!collapse field=imgDigest}");
                     String collapse = ClientUtils.escapeQueryChars(word.replace("collapse:", ""));
                     fqStrings.add(String.format("{!collapse field=%s}", collapse));
                 } else if (word.toLowerCase().startsWith("type:")) {
@@ -466,15 +465,6 @@ public class ImageSearchServlet extends HttpServlet {
                         } else {
                             fqStrings.add("imgMimeType: image/" + typeWord);
                         }
-                    }
-                } else if (word.toLowerCase().startsWith("duplicates:")) {
-                    LOG.debug("found duplicates:");
-                    String safeWord = word.replace("duplicates:", "");
-                    if (safeWord.toLowerCase().equals("off") || safeWord.toLowerCase().equals("on")) {
-                        fqStrings.remove("{!collapse field=imgDigest}");
-                    }
-                    if (!safeWord.toLowerCase().equals("on")) {
-                        fqStrings.add("{!collapse field=imgDigest}");
                     }
                 } else if (word.toLowerCase().startsWith("safe:")) {
                     LOG.debug("found safe:");

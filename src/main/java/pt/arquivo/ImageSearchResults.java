@@ -21,12 +21,12 @@ public class ImageSearchResults {
     int numberOfResponseItems;
     long offset;
     public static final String SAFE = "safe";
-    public static final String IMAGETSTAMP = "imgTstamp";
-    public static final String IMAGESRC = "imgSrc";
+    public static final String IMAGETSTAMP = "imgCrawlTimestamp";
+    public static final String IMAGESRC = "imgUrl";
     public static final String IMAGELINKTOARCHIVE = "imgLinkToArchive";
     public static final String PAGELINKTOARCHIVE = "pageLinkToArchive";
-    public static final String PAGEURL = "pageURL";
-    public static final String PAGETSTAMP = "pageTstamp";
+    public static final String PAGEURL = "pageUrl";
+    public static final String PAGETSTAMP = "pageCrawlTimestamp";
     public static final String IMGSRCBASE64 = "imgSrcBase64";
     public static final String IMGTHUMBNAILBASE64 = "imgThumbnailBase64";
     public static final String WAYBACKADDRESS = "https://arquivo.pt/wayback/";
