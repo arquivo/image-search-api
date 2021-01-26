@@ -424,7 +424,7 @@ public class ImageSearchServlet extends HttpServlet {
         Gson gson = new GsonBuilder().disableHtmlEscaping().create();
         String docIdsJSON = gson.toJson(docIds);
 
-        LOG.info("[ImageSearch API]\tresponse\t" + duration + "ms\t" + "\t" + ipAddress + "\t" + userAgent + "\t" + requestURL + "\tresults:" + docIdsJSON);
+        LOG.info("[ImageSearch API]\tresponse\t" + duration + "ms\t" + ipAddress + "\t" + userAgent + "\t" + requestURL + "\tresults:" + docIdsJSON);
 
     }
 
