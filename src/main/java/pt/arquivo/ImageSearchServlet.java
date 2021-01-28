@@ -121,6 +121,17 @@ public class ImageSearchServlet extends HttpServlet {
                 (request.getQueryString() != null ? "?" + request.getQueryString() : "");
         LOG.debug("[imagesearch request] : " + requestURL);
 
+        String ipAddress = request.getHeader("X-FORWARDED-FOR");
+        if (ipAddress == null) {
+            ipAddress = request.getRemoteAddr();
+        }
+
+        String userAgent = request.getHeader("User-Agent");
+        if (userAgent == null || userAgent.trim().isEmpty())
+            userAgent = "-";
+
+        LOG.info("[ImageSearch API]\trequest\t" + ipAddress + "\t" + userAgent + "\t" + requestURL);
+
         response.addHeader("Access-Control-Allow-Origin", "*");
         response.addHeader("Access-Control-Allow-Methods", "GET, HEAD");
 
@@ -419,12 +430,7 @@ public class ImageSearchServlet extends HttpServlet {
         }
         response.setCharacterEncoding("UTF-8");
         duration = (endTime - startTime);
-        String ipAddress = request.getHeader("X-FORWARDED-FOR");
-        if (ipAddress == null) {
-            ipAddress = request.getRemoteAddr();
-        }
 
-        LOG.info("[ImageSearch API]" + "\t" + duration + "ms\t" + ipAddress + "\t" + requestURL);
 
         // Get the printwriter object from response to write the required json object to the output stream
         PrintWriter out = response.getWriter();
@@ -434,7 +440,7 @@ public class ImageSearchServlet extends HttpServlet {
         Gson gson = new GsonBuilder().disableHtmlEscaping().create();
         String docIdsJSON = gson.toJson(docIds);
 
-        LOG.info("[ImageSearch API] (response)" + "\t" + requestURL + "\tresults:" + docIdsJSON);
+        LOG.info("[ImageSearch API]\tresponse\t" + duration + "ms\t" + ipAddress + "\t" + userAgent + "\t" + requestURL + "\tresults:" + docIdsJSON);
 
     }
 
