@@ -10,6 +10,7 @@ import org.apache.solr.client.solrj.impl.CloudSolrClient.Builder;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.client.solrj.util.ClientUtils;
+import org.apache.solr.common.SolrDocument;
 import org.apache.solr.common.SolrDocumentList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -382,6 +383,11 @@ public class ImageSearchServlet extends HttpServlet {
 
             SolrDocumentList documents = new SolrDocumentList();
             documents.addAll(responseSolr.getResults());
+            for (SolrDocument doc: documents){
+                docIds.add(String.valueOf(doc.getFieldValue("id")));
+            }
+
+
 
             int numFound = (int) responseSolr.getResults().getNumFound();
             int offsetPreviousPage;
