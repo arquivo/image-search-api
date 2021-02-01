@@ -56,7 +56,7 @@ public class ImageSearchServlet extends HttpServlet {
     private static String solrHost = null;
     private static String solrCollection = null;
     Calendar DATE_END = new GregorianCalendar();
-    private static final String V1_DEFAULT_FL_STRING = "imgUrl,imgMimeType,imgHeight,imgWidth,imgCrawlTimestamp,imgTitle,imgAlt,imgCaption,pageUrl,pageCrawlTimestamp,pageTitle,collection";
+    private static final String V1_DEFAULT_FL_STRING = "id,imgUrl,imgMimeType,imgHeight,imgWidth,imgCrawlTimestamp,imgTitle,imgAlt,imgCaption,pageUrl,pageCrawlTimestamp,pageTitle,collection";
     private static final String V1_MOREFIELDS = "imgThumbnailBase64,imgSrcURLDigest,pageProtocol,pageHost,pageImages,safe";
 
     private static final Map<String, Integer> DEFAULT_QUERY_FIELDS = new HashMap<String, Integer>() {{
@@ -261,11 +261,21 @@ public class ImageSearchServlet extends HttpServlet {
 
 
         if (request.getParameter("siteSearch") != null) {
-            String domain = ClientUtils.escapeQueryChars(request.getParameter("siteSearch"));
-            if (domain.startsWith("www."))
-                domain = domain.substring(4);
-            if (!domain.isEmpty())
-                fqStrings.add("pageHost:*." + domain + " OR pageHost:" + domain);
+            StringBuilder domainsFilter = new StringBuilder();
+            for (String domainUnescaped: request.getParameter("siteSearch").split(",")) {
+                String domain = ClientUtils.escapeQueryChars(domainUnescaped);
+                // unescape *, as it is needed to match all subdomains
+                // https://github.com/arquivo/pwa-technologies/issues/1014
+                // https://github.com/arquivo/pwa-technologies/issues/987
+                domain = domain.replace("\\*", "*");
+                if (!domain.isEmpty()){
+                    if (domainsFilter.length() != 0)
+                        domainsFilter.append(" OR ");
+                    domainsFilter.append("pageHost:");
+                    domainsFilter.append(domain);
+                }
+            }
+            fqStrings.add(domainsFilter.toString());
         }
 
         String requestedCollection = request.getParameter("collection");
