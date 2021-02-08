@@ -417,6 +417,7 @@ public class ImageSearchServlet extends HttpServlet {
         } catch (Throwable e) {
             LOG.error(e.getClass().getCanonicalName(), e);
             imgSearchResponse = new ImageSearchErrorResponse(e);
+            response.setStatus(500);
         } finally {
             if (solr != null)
                 solr.close();
