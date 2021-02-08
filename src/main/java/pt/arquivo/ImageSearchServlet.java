@@ -447,7 +447,6 @@ public class ImageSearchServlet extends HttpServlet {
         response.setCharacterEncoding("UTF-8");
         duration = (endTime - startTime);
 
-
         // Get the printwriter object from response to write the required json object to the output stream
         PrintWriter out = response.getWriter();
         out.print(jsonSolrResponse);
@@ -468,7 +467,7 @@ public class ImageSearchServlet extends HttpServlet {
 
     private String checkSpecialOperators() {
         LOG.debug("checking special operators");
-        if (q.contains("site:") || q.contains("type:") || q.contains("safe:") || q.contains("size:") || q.contains("duplicates:") || q.contains("collapse:")) { /*query has a special operator we need to deal with it*/
+        if (q.contains("site:") || q.contains("type:") || q.contains("safe:") || q.contains("size:") || q.contains("collapse:")) { /*query has a special operator we need to deal with it*/
             LOG.debug("found special operator");
             String[] words = q.split(" ");
             ArrayList<String> cleanWords = new ArrayList<String>();
