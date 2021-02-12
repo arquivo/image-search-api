@@ -1,13 +1,15 @@
 package pt.arquivo;
 
+import java.text.SimpleDateFormat;
 import java.util.Set;
 
 import org.apache.solr.common.SolrDocument;
 import org.apache.solr.common.SolrDocumentList;
 
-import static pt.arquivo.APIVersionTranslator.*;
 
 public class ImageSearchResults {
+    private SimpleDateFormat V1_DATE_FORMAT;
+
     String serviceName = "Arquivo.pt - image search service.";
     String linkToService = "https://arquivo.pt/images.jsp";
     String linkToDocumentation;
@@ -45,9 +47,10 @@ public class ImageSearchResults {
             this.numberOfResponseItems = (int) totalItems;
         }
         this.offset = offset;
+
+        this.V1_DATE_FORMAT = (SimpleDateFormat)APIVersionTranslator.V1_DATE_FORMAT.clone();
+
         this.responseItems = parseDocuments(responseItems);
-
-
 
     }
 
@@ -62,30 +65,30 @@ public class ImageSearchResults {
             for (String key : keyNames) {
                 switch (key) {
                     case V2_SAFE:
-                        newDocument.addField(v2Tov1(V2_SAFE), 1.0f - (float) current.getFieldValue(V2_SAFE));
+                        newDocument.addField(APIVersionTranslator.v2Tov1(V2_SAFE), 1.0f - (float) current.getFieldValue(V2_SAFE));
                         break;
                     case V2_PAGETSTAMP:
-                        newDocument.addField(v2Tov1(V2_PAGETSTAMP), V1_DATE_FORMAT.format(current.getFieldValue(V2_PAGETSTAMP)));
+                        newDocument.addField(APIVersionTranslator.v2Tov1(V2_PAGETSTAMP), this.V1_DATE_FORMAT.format(current.getFieldValue(V2_PAGETSTAMP)));
                         break;
                     case V2_IMAGETSTAMP:
-                        newDocument.addField(v2Tov1(V2_IMAGETSTAMP), V1_DATE_FORMAT.format(current.getFieldValue(V2_IMAGETSTAMP)));
+                        newDocument.addField(APIVersionTranslator.v2Tov1(V2_IMAGETSTAMP), this.V1_DATE_FORMAT.format(current.getFieldValue(V2_IMAGETSTAMP)));
                         break;
                     default:
-                        newDocument.addField(v2Tov1(key), current.getFieldValue(key));
+                        newDocument.addField(APIVersionTranslator.v2Tov1(key), current.getFieldValue(key));
                         break;
                 }
             }
-            String V1_IMAGEURL = v2Tov1(V2_IMAGEURL);
-            String V1_IMAGETSTAMP = v2Tov1(V2_IMAGETSTAMP);
-            String V1_IMAGELINKTOARCHIVE = v2Tov1(V2_IMAGELINKTOARCHIVE);
+            String V1_IMAGEURL = APIVersionTranslator.v2Tov1(V2_IMAGEURL);
+            String V1_IMAGETSTAMP = APIVersionTranslator.v2Tov1(V2_IMAGETSTAMP);
+            String V1_IMAGELINKTOARCHIVE = APIVersionTranslator.v2Tov1(V2_IMAGELINKTOARCHIVE);
 
             if (newDocument.containsKey(V1_IMAGEURL) && newDocument.containsKey(V1_IMAGETSTAMP)) {
                 newDocument.addField(V1_IMAGELINKTOARCHIVE, V2_WAYBACKADDRESS + newDocument.getFieldValue(V1_IMAGETSTAMP) + "im_/" + newDocument.getFieldValue(V1_IMAGEURL));
             }
 
-            String V1_PAGEURL = v2Tov1(V2_PAGEURL);
-            String V1_PAGETSTAMP = v2Tov1(V2_PAGETSTAMP);
-            String V1_PAGELINKTOARCHIVE = v2Tov1(V2_PAGELINKTOARCHIVE);
+            String V1_PAGEURL = APIVersionTranslator.v2Tov1(V2_PAGEURL);
+            String V1_PAGETSTAMP = APIVersionTranslator.v2Tov1(V2_PAGETSTAMP);
+            String V1_PAGELINKTOARCHIVE = APIVersionTranslator.v2Tov1(V2_PAGELINKTOARCHIVE);
 
             if (newDocument.containsKey(V1_PAGEURL) && newDocument.containsKey(V1_PAGETSTAMP)) {
                 newDocument.addField(V1_PAGELINKTOARCHIVE, V2_WAYBACKADDRESS + newDocument.getFieldValue(V1_PAGETSTAMP) + "/" + newDocument.getFieldValue(V1_PAGEURL));

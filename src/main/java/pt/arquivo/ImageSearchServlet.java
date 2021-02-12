@@ -1,5 +1,6 @@
 package pt.arquivo;
 
+import com.ctc.wstx.util.SimpleCache;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParseException;
@@ -30,7 +31,6 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static pt.arquivo.APIVersionTranslator.*;
 import static pt.arquivo.ImageSearchResults.V2_IMAGEURL;
 import static pt.arquivo.ImageSearchResults.V2_IMAGETSTAMP;
 
@@ -69,9 +69,7 @@ public class ImageSearchServlet extends HttpServlet {
         put("pageUrlTokens", 1);
     }};
 
-    private ArrayList<String> fqStrings;
-    private ArrayList<Map.Entry<String, SolrQuery.ORDER>> sortStrings;
-    private String q;
+
 
     /**
      * HttpServlet init method.
@@ -85,9 +83,7 @@ public class ImageSearchServlet extends HttpServlet {
         solrHost = config.getInitParameter("solrServer");
         solrCollection = config.getInitParameter("solrCollection");
 
-        TimeZone zone = TimeZone.getTimeZone("GMT");
-        V1_DATE_FORMAT.setTimeZone(zone);
-        V2_DATE_FORMAT.setTimeZone(zone);
+
 
 
         if (collectionsHost == null) {
@@ -112,8 +108,13 @@ public class ImageSearchServlet extends HttpServlet {
      */
     public void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        fqStrings = new ArrayList<>();
-        sortStrings = new ArrayList<>();
+        ArrayList<String> fqStrings = new ArrayList<>();
+        ArrayList<Map.Entry<String, SolrQuery.ORDER>> sortStrings = new ArrayList<>();
+        String q = "";
+
+        SimpleDateFormat V1_DATE_FORMAT = (SimpleDateFormat)APIVersionTranslator.V1_DATE_FORMAT.clone();
+        SimpleDateFormat V2_DATE_FORMAT = (SimpleDateFormat)APIVersionTranslator.V2_DATE_FORMAT.clone();
+
         LOG.debug("[doGet] query request from " + request.getRemoteAddr());
         String requestURL = request.getScheme() + "://" +
                 request.getServerName() +
@@ -257,7 +258,7 @@ public class ImageSearchServlet extends HttpServlet {
 
         StringBuilder flStringV2 = new StringBuilder();
         for(String field: flString.split(","))
-            flStringV2.append(v1Tov2(field) + ",");
+            flStringV2.append(APIVersionTranslator.v1Tov2(field) + ",");
         flString = flStringV2.toString();
 
 
@@ -284,12 +285,13 @@ public class ImageSearchServlet extends HttpServlet {
             fqStrings.add(Arrays.asList(requestedCollection.split(",")).stream().map(c -> "collection:" + c).collect(Collectors.joining(" OR ")));
         }
 
+
         /*Process operators such as site: type: and site: inside the q parameter*/
         /*Should we allow people to use those operators when calling the api e.g.
          * /imagesearch?q=sapo%20site:sapo.pt%20type:jpeg instead of
          * /imagesearch?q=sapo&siteSearch=sapo.pt&type=jpeg */
-        q = checkSpecialOperators();
-        q = checkSortOperator();
+        q = checkSpecialOperators(q, fqStrings);
+        q = checkSortOperator(q, sortStrings);
         //Pretty print in output message
         String prettyPrintParameter = request.getParameter("prettyPrint");
         boolean prettyOutput = false;
@@ -450,7 +452,7 @@ public class ImageSearchServlet extends HttpServlet {
 
         // Get the printwriter object from response to write the required json object to the output stream
         PrintWriter out = response.getWriter();
-        out.print(jsonSolrResponse);
+        out.println(jsonSolrResponse);
         out.flush();
 
         Gson gson = new GsonBuilder().disableHtmlEscaping().create();
@@ -466,9 +468,9 @@ public class ImageSearchServlet extends HttpServlet {
     /************************************************************/
 
 
-    private String checkSpecialOperators() {
+    private String checkSpecialOperators(String q, ArrayList<String> fqStrings) {
         LOG.debug("checking special operators");
-        if (q.contains("site:") || q.contains("type:") || q.contains("safe:") || q.contains("size:") || q.contains("collapse:")) { /*query has a special operator we need to deal with it*/
+        if (q.contains("fq:") || q.contains("site:") || q.contains("type:") || q.contains("safe:") || q.contains("size:") || q.contains("collapse:")) { /*query has a special operator we need to deal with it*/
             LOG.debug("found special operator");
             String[] words = q.split(" ");
             ArrayList<String> cleanWords = new ArrayList<String>();
@@ -499,7 +501,7 @@ public class ImageSearchServlet extends HttpServlet {
                     LOG.debug("found safe:");
                     String safeWord = word.replace("safe:", "");
                     if (safeWord.toLowerCase().equals("off") || safeWord.toLowerCase().equals("on")) {
-                        removeMatchingFqString("safe");
+                        removeMatchingFqString("safe", fqStrings);
                     }
                     if (!safeWord.toLowerCase().equals("off")) {
                         fqStrings.add("safe:[0 TO 0.49]"); /*Default behaviour is to limit safe score from 0 -> 0.49; else show all images*/
@@ -521,6 +523,16 @@ public class ImageSearchServlet extends HttpServlet {
                         }
                     }
 
+                } else if (word.toLowerCase().startsWith("fq:")) {
+                    LOG.debug("found fq:");
+                    String filterWords = word.replace("fq:", "");
+                    filterWords = filterWords.replace("_", " ");
+                    String[] filterWordTokens = filterWords.split(";");
+                    for(String filterWordToken: filterWordTokens){
+                        removeMatchingFqString(filterWordToken.split(":")[0], fqStrings);
+                        fqStrings.add(filterWordToken);
+                    }
+
                 } else {
                     LOG.debug(" found clean word");
                     cleanWords.add(word);
@@ -530,7 +542,7 @@ public class ImageSearchServlet extends HttpServlet {
         } else return q;
     }
 
-    private String checkSortOperator() {
+    private String checkSortOperator(String q, ArrayList<Map.Entry<String, SolrQuery.ORDER>> sortStrings) {
         LOG.debug("checking sort operators");
         if (q.contains("sort:")) {
             LOG.debug("found sort operator");
@@ -557,7 +569,7 @@ public class ImageSearchServlet extends HttpServlet {
     }
 
 
-    private void removeMatchingFqString(String field) {
+    private void removeMatchingFqString(String field, ArrayList<String> fqStrings) {
         for (int i = 0; i < fqStrings.size(); i++) {
             if (fqStrings.get(i).startsWith(field)) {
                 fqStrings.remove(i);
@@ -588,9 +600,10 @@ public class ImageSearchServlet extends HttpServlet {
      * @return
      */
     private static Boolean tryParse(DateFormat df, String s) {
+        DateFormat df2 = (DateFormat) df.clone();
         Boolean valid = false;
         try {
-            df.parse(s);
+            df2.parse(s);
             valid = true;
         } catch (ParseException e) {
             valid = false;
