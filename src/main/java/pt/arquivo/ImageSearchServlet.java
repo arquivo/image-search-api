@@ -83,9 +83,6 @@ public class ImageSearchServlet extends HttpServlet {
         solrHost = config.getInitParameter("solrServer");
         solrCollection = config.getInitParameter("solrCollection");
 
-
-
-
         if (collectionsHost == null) {
             LOG.debug("[init] Null waybackHost parameter in Web.xml");
         }
@@ -108,6 +105,9 @@ public class ImageSearchServlet extends HttpServlet {
      */
     public void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+
+        LOG.debug("[doGet] query request from " + request.getRemoteAddr());
+
         ArrayList<String> fqStrings = new ArrayList<>();
         ArrayList<Map.Entry<String, SolrQuery.ORDER>> sortStrings = new ArrayList<>();
         String q = "";
@@ -115,7 +115,7 @@ public class ImageSearchServlet extends HttpServlet {
         SimpleDateFormat V1_DATE_FORMAT = (SimpleDateFormat)APIVersionTranslator.V1_DATE_FORMAT.clone();
         SimpleDateFormat V2_DATE_FORMAT = (SimpleDateFormat)APIVersionTranslator.V2_DATE_FORMAT.clone();
 
-        LOG.debug("[doGet] query request from " + request.getRemoteAddr());
+
         String requestURL = request.getScheme() + "://" +
                 request.getServerName() +
                 ("http".equals(request.getScheme()) && request.getServerPort() == 80 || "https".equals(request.getScheme()) && request.getServerPort() == 443 ? "" : ":" + request.getServerPort()) +
@@ -382,6 +382,8 @@ public class ImageSearchServlet extends HttpServlet {
             QueryResponse responseSolr = null;
 
             responseSolr = solr.query(solrQuery);
+
+            LOG.debug("SOLR Query Done");
 
             SolrDocumentList documents = new SolrDocumentList();
             documents.addAll(responseSolr.getResults());
