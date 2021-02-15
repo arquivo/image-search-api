@@ -31,9 +31,11 @@ public class ImageSearchErrorResponse {
 		this.error = new HashMap<>();
 		this.error.put(e.getClass().getCanonicalName(), e.getMessage());
 
+		/*
 		PrintWriter sb = new PrintWriter(new StringWriter());
 		e.printStackTrace(sb);
 
 		this.error.put(e.getClass().getCanonicalName(), sb.toString());
+		 */
 	}
 }
