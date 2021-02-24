@@ -74,7 +74,7 @@ public class ImageSearchResults {
                         newDocument.addField(APIVersionTranslator.v2Tov1(V2_IMAGETSTAMP), this.V1_DATE_FORMAT.format(current.getFieldValue(V2_IMAGETSTAMP)));
                         break;
                     default:
-                        newDocument.addField(APIVersionTranslator.v2Tov1(key), current.getFieldValue(key));
+                        newDocument.addField(APIVersionTranslator.v2Tov1(key), current.getFirstValue(key));
                         break;
                 }
             }
