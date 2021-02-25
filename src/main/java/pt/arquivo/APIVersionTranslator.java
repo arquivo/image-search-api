@@ -16,6 +16,7 @@ public class APIVersionTranslator {
                 put("pageTstamp", "pageCrawlTimestamp");
                 put("pageImages", "imagesInPage");
                 put("imgThumbnailBase64", "imgSrcBase64");
+                put("id", "imgDigest");
             }
         }
     };
