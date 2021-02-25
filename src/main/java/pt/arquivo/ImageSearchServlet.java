@@ -54,7 +54,7 @@ public class ImageSearchServlet extends HttpServlet {
     private static String solrCollection = null;
     Calendar DATE_END = new GregorianCalendar();
     private static final String V1_DEFAULT_FL_STRING = "id,imgUrl,imgMimeType,imgHeight,imgWidth,imgCrawlTimestamp,imgTitle,imgAlt,imgCaption,pageUrl,pageCrawlTimestamp,pageTitle,collection";
-    private static final String V1_MOREFIELDS = "imgThumbnailBase64,imgSrcURLDigest,pageProtocol,pageHost,pageImages,safe";
+    private static final String V1_MOREFIELDS = "pageHost,matchingImages,safe";
 
     private static final Map<String, Integer> DEFAULT_QUERY_FIELDS = new HashMap<String, Integer>() {{
         put("imgTitle", 4);
@@ -64,7 +64,6 @@ public class ImageSearchServlet extends HttpServlet {
         put("pageTitle", 1);
         put("pageUrlTokens", 1);
     }};
-
 
 
     /**
@@ -174,7 +173,7 @@ public class ImageSearchServlet extends HttpServlet {
         }
 
         StringBuilder flStringV2 = new StringBuilder();
-        for(String field: flString.split(","))
+        for (String field : flString.split(","))
             flStringV2.append(APIVersionTranslator.v1Tov2(field) + ",");
         flString = flStringV2.toString();
 
@@ -203,7 +202,6 @@ public class ImageSearchServlet extends HttpServlet {
         try {
             LOG.debug("Wayback HOST: " + collectionsHost);
             LOG.debug("SOLR HOST: " + solrHost);
-
 
 
             SolrQuery solrQuery = new SolrQuery();
@@ -237,7 +235,7 @@ public class ImageSearchServlet extends HttpServlet {
 
             SolrDocumentList documents = new SolrDocumentList();
             documents.addAll(responseSolr.getResults());
-            for (SolrDocument doc: documents){
+            for (SolrDocument doc : documents) {
                 docIds.add(String.valueOf(doc.getFieldValue("id")));
             }
 
@@ -363,7 +361,7 @@ public class ImageSearchServlet extends HttpServlet {
             solrQuery.addSort(V2_IMAGETSTAMP, SolrQuery.ORDER.asc);
             solrQuery.addSort(V2_IMAGEURL, SolrQuery.ORDER.asc);
         } else {
-            for (Map.Entry<String,SolrQuery.ORDER> e: sortStrings)
+            for (Map.Entry<String, SolrQuery.ORDER> e : sortStrings)
                 solrQuery.addSort(e.getKey(), e.getValue());
         }
     }
@@ -424,13 +422,13 @@ public class ImageSearchServlet extends HttpServlet {
     private void parseSiteFilter(HttpServletRequest request, ArrayList<String> fqStrings) {
         if (request.getParameter("siteSearch") != null) {
             StringBuilder domainsFilter = new StringBuilder();
-            for (String domainUnescaped: request.getParameter("siteSearch").split(",")) {
+            for (String domainUnescaped : request.getParameter("siteSearch").split(",")) {
                 String domain = ClientUtils.escapeQueryChars(domainUnescaped);
                 // unescape *, as it is needed to match all subdomains
                 // https://github.com/arquivo/pwa-technologies/issues/1014
                 // https://github.com/arquivo/pwa-technologies/issues/987
                 domain = domain.replace("\\*", "*");
-                if (!domain.isEmpty()){
+                if (!domain.isEmpty()) {
                     if (domainsFilter.length() != 0)
                         domainsFilter.append(" OR ");
                     domainsFilter.append("pageHost:");
@@ -471,8 +469,8 @@ public class ImageSearchServlet extends HttpServlet {
 
     private void parseDates(HttpServletRequest request, ArrayList<String> fqStrings) {
         // date restriction
-        SimpleDateFormat V1_DATE_FORMAT = (SimpleDateFormat)APIVersionTranslator.V1_DATE_FORMAT.clone();
-        SimpleDateFormat V2_DATE_FORMAT = (SimpleDateFormat)APIVersionTranslator.V2_DATE_FORMAT.clone();
+        SimpleDateFormat V1_DATE_FORMAT = (SimpleDateFormat) APIVersionTranslator.V1_DATE_FORMAT.clone();
+        SimpleDateFormat V2_DATE_FORMAT = (SimpleDateFormat) APIVersionTranslator.V2_DATE_FORMAT.clone();
 
         String dateStart = request.getParameter("from");
         if (dateStart == null || dateStart.length() == 0) {
@@ -517,7 +515,7 @@ public class ImageSearchServlet extends HttpServlet {
                 LOG.error("Parse Exception: ", e);
             }
         }
-        fqStrings.add(V2_IMAGETSTAMP +":[" + dateStart + " TO " + dateEnd + "]");
+        fqStrings.add(V2_IMAGETSTAMP + ":[" + dateStart + " TO " + dateEnd + "]");
     }
 
 
@@ -596,7 +594,7 @@ public class ImageSearchServlet extends HttpServlet {
                     String filterWords = word.replace("fq:", "");
                     filterWords = filterWords.replace("_", " ");
                     String[] filterWordTokens = filterWords.split(";");
-                    for(String filterWordToken: filterWordTokens){
+                    for (String filterWordToken : filterWordTokens) {
                         removeMatchingFqString(filterWordToken.split(":")[0], fqStrings);
                         fqStrings.add(filterWordToken);
                     }
