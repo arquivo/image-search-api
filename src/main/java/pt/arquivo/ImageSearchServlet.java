@@ -535,11 +535,21 @@ public class ImageSearchServlet extends HttpServlet {
             for (String word : words) {
                 if (word.toLowerCase().startsWith("site:")) {
                     LOG.debug("found site:");
-                    String domain = ClientUtils.escapeQueryChars(word.replace("site:", ""));
-                    if (domain.startsWith("www."))
-                        domain = domain.substring(4);
-                    if (!domain.isEmpty())
-                        fqStrings.add("pageHost:*." + domain + " OR pageHost:" + domain);
+                    String domains = ClientUtils.escapeQueryChars(word.replace("site:", ""));
+                    StringBuilder domainsFilter = new StringBuilder();
+                    for (String domain : domains.split(",")) {
+                        // unescape *, as it is needed to match all subdomains
+                        // https://github.com/arquivo/pwa-technologies/issues/1014
+                        // https://github.com/arquivo/pwa-technologies/issues/987
+                        domain = domain.replace("\\*", "*");
+                        if (!domain.isEmpty()) {
+                            if (domainsFilter.length() != 0)
+                                domainsFilter.append(" OR ");
+                            domainsFilter.append("pageHost:");
+                            domainsFilter.append(domain);
+                        }
+                    }
+                    fqStrings.add(domainsFilter.toString());
                 } else if (word.toLowerCase().startsWith("collapse:")) {
                     LOG.debug("found collapse:");
                     //fqStrings.remove("{!collapse field=imgDigest}");
