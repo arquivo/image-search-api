@@ -159,6 +159,8 @@ public class ImageSearchServlet extends HttpServlet {
 
         parseSafeSearch(request, fqStrings);
 
+        addBlockFilter(request, fqStrings);
+
         parseMimeType(request, fqStrings);
 
         parseSizes(request, fqStrings);
@@ -333,6 +335,10 @@ public class ImageSearchServlet extends HttpServlet {
         if (!"off".equals(safeSearch)) {
             fqStrings.add("safe:[0 TO 0.49]"); /*Default behaviour is to limit safe score from 0 -> 0.49; else show all images*/
         }
+    }
+
+    private void addBlockFilter(HttpServletRequest request, ArrayList<String> fqStrings) {
+        fqStrings.add("blocked:0");
     }
 
     private int getLimit(HttpServletRequest request, int limit) {
