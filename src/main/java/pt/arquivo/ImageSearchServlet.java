@@ -101,6 +101,10 @@ public class ImageSearchServlet extends HttpServlet {
      */
     public void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        long startTime;
+        long endTime;
+        long duration;
+        startTime = System.currentTimeMillis();
 
         LOG.debug("[doGet] query request from " + request.getRemoteAddr());
 
@@ -122,8 +126,11 @@ public class ImageSearchServlet extends HttpServlet {
         String userAgent = request.getHeader("User-Agent");
         if (userAgent == null || userAgent.trim().isEmpty())
             userAgent = "-";
+        else {
+            userAgent = "\"" + userAgent + "\"";
+        }
 
-        LOG.info("[ImageSearch API]\trequest\t" + ipAddress + "\t" + userAgent + "\t" + requestURL);
+        LOG.info("request\t" + ipAddress + "\t" + userAgent + "\t" + requestURL);
 
         response.addHeader("Access-Control-Allow-Origin", "*");
         response.addHeader("Access-Control-Allow-Methods", "GET, HEAD");
@@ -131,9 +138,7 @@ public class ImageSearchServlet extends HttpServlet {
         int start = 0;
         int limit = 50; /*Default number of results*/
 
-        long startTime;
-        long endTime;
-        long duration;
+
 
         Object imgSearchResponse = null;
         ImageSearchResults imgSearchResults = null;
@@ -196,7 +201,7 @@ public class ImageSearchServlet extends HttpServlet {
         if (prettyPrintParameter != null && prettyPrintParameter.equals("true"))
             prettyOutput = true;
 
-        startTime = System.currentTimeMillis();
+
         //execute the query
 
         LinkedList<String> docIds = new LinkedList<>();
@@ -272,7 +277,7 @@ public class ImageSearchServlet extends HttpServlet {
          */
 
 
-        endTime = System.currentTimeMillis();
+
 
         try {
             Gson gson = null;
@@ -296,7 +301,6 @@ public class ImageSearchServlet extends HttpServlet {
         }
 
         response.setCharacterEncoding("UTF-8");
-        duration = (endTime - startTime);
 
         // Get the printwriter object from response to write the required json object to the output stream
         PrintWriter out = response.getWriter();
@@ -306,7 +310,13 @@ public class ImageSearchServlet extends HttpServlet {
         Gson gson = new GsonBuilder().disableHtmlEscaping().create();
         String docIdsJSON = gson.toJson(docIds);
 
-        LOG.info("[ImageSearch API]\tresponse\t" + duration + "ms\t" + ipAddress + "\t" + userAgent + "\t" + requestURL + "\tresults:" + docIdsJSON);
+        endTime = System.currentTimeMillis();
+        duration = (endTime - startTime);
+
+
+        String jsonString = gson.toJson(request.getParameterMap());
+
+        LOG.info(ipAddress + "\t" + userAgent + "\t" + requestURL + "\t" + duration + "ms\tsearch_parameters:" + jsonString + "\tsearch_results:" + docIdsJSON);
 
     }
 
@@ -624,10 +634,32 @@ public class ImageSearchServlet extends HttpServlet {
                 //TODO: validate user input
                 if (word.toLowerCase().startsWith("sort:")) {
                     LOG.debug("found sort:");
-                    String[] sortInstances = ClientUtils.escapeQueryChars(word.replace("sort:", "")).split(";");
+                    String[] sortInstances = ClientUtils.escapeQueryChars(word.replace("sort:", "")).split("\\\\;");
                     for (String instance : sortInstances) {
                         String[] sortInstance = instance.split(",");
                         String field = sortInstance[0];
+
+                        String[] fieldInstances = field.split("\\\\\\^");
+                        if (fieldInstances.length > 1) {
+                            field = "pow(" + String.join(",",fieldInstances) + ")";
+                        }
+                        fieldInstances = field.split("\\\\\\*");
+                        if (fieldInstances.length > 1) {
+                            field = "product(" + String.join(",",fieldInstances) + ")";
+                        }
+                        fieldInstances = field.split("\\\\/");
+                        if (fieldInstances.length > 1) {
+                            field = "div(" + String.join(",",fieldInstances) + ")";
+                        }
+                        fieldInstances = field.split("\\\\\\+");
+                        if (fieldInstances.length > 1) {
+                            field = "sum(" + String.join(",",fieldInstances) + ")";
+                        }
+                        fieldInstances = field.split("\\\\-");
+                        if (fieldInstances.length > 1) {
+                            field = "sub(" + String.join(",",fieldInstances) + ")";
+                        }
+
                         String dir = sortInstance[1];
                         sortStrings.add(new AbstractMap.SimpleEntry<>(field, SolrQuery.ORDER.valueOf(dir)));
                     }
