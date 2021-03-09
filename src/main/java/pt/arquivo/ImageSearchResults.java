@@ -37,7 +37,7 @@ public class ImageSearchResults {
         this.previousPage = previousPage;
 
         if (documentation) {
-            linkToDocumentation = "https://github.com/arquivo/pwa-technologies/wiki/ImageSearch-API-v1-(beta)";
+            linkToDocumentation = "https://github.com/arquivo/pwa-technologies/wiki/ImageSearch-API-v1.1-(beta)";
         }
 
         this.linkToMoreFields = linkToMoreFields;

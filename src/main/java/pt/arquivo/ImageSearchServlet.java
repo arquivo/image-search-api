@@ -34,6 +34,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static pt.arquivo.APIVersionTranslator.V1_DATE_FORMAT;
 import static pt.arquivo.ImageSearchResults.V2_IMAGEURL;
 import static pt.arquivo.ImageSearchResults.V2_IMAGETSTAMP;
 
@@ -243,7 +244,7 @@ public class ImageSearchServlet extends HttpServlet {
             SolrDocumentList documents = new SolrDocumentList();
             documents.addAll(responseSolr.getResults());
             for (SolrDocument doc : documents) {
-                docIds.add(String.valueOf(doc.getFieldValue("id")));
+                docIds.add(V1_DATE_FORMAT.format(doc.getFieldValue(V2_IMAGETSTAMP)) + "/" + doc.getFieldValue("imgUrl"));
             }
 
             int numFound = (int) responseSolr.getResults().getNumFound();
@@ -349,6 +350,7 @@ public class ImageSearchServlet extends HttpServlet {
 
     private void addBlockFilter(HttpServletRequest request, ArrayList<String> fqStrings) {
         fqStrings.add("blocked:0");
+        fqStrings.add("isInline:false");
     }
 
     private int getLimit(HttpServletRequest request, int limit) {
@@ -473,12 +475,16 @@ public class ImageSearchServlet extends HttpServlet {
         if (sizeParameter == null)
             sizeParameter = "";
         if (!sizeParameter.equals("")) {
-            if (sizeParameter.equals("sm")) {
-                fqStrings.add("{!frange u=65536 }product(imgHeight,imgWidth)"); /*images up to 65536pixels² of area - i.e. max square size of 256x256px*/
-            } else if (sizeParameter.equals("md")) {
-                fqStrings.add("{!frange l=65537 u=810000 }product(imgHeight,imgWidth)"); /*images between 65537pixels² of area , up to  810000px² of area - i.e. max square size of 900x900px*/
-            } else if (sizeParameter.equals("lg")) {
-                fqStrings.add("{!frange l=810001}product(imgHeight,imgWidth)"); /*images bigger than 810000px² of area*/
+            switch (sizeParameter) {
+                case "sm":
+                    fqStrings.add("{!frange u=65536 }product(imgHeight,imgWidth)"); /*images up to 65536pixels² of area - i.e. max square size of 256x256px*/
+                    break;
+                case "md":
+                    fqStrings.add("{!frange l=65537 u=810000 }product(imgHeight,imgWidth)"); /*images between 65537pixels² of area , up to  810000px² of area - i.e. max square size of 900x900px*/
+                    break;
+                case "lg":
+                    fqStrings.add("{!frange l=810001}product(imgHeight,imgWidth)"); /*images bigger than 810000px² of area*/
+                    break;
             }
         }
     }
@@ -593,15 +599,19 @@ public class ImageSearchServlet extends HttpServlet {
                     String sizeWord = word.replace("size:", "").toLowerCase();
                     LOG.debug("size word: " + sizeWord);
                     if (!sizeWord.equals("")) {
-                        if (sizeWord.equals("sm")) {
-                            LOG.debug("sm");
-                            fqStrings.add("{!frange u=65536 }product(imgHeight,imgWidth)"); /*images up to 65536pixels² of area - i.e. max square size of 256x256px*/
-                        } else if (sizeWord.equals("md")) {
-                            LOG.debug("md");
-                            fqStrings.add("{!frange l=65537 u=810000 }product(imgHeight,imgWidth)"); /*images between 65537pixels² of area , up to  810000px² of area - i.e. max square size of 900x900px*/
-                        } else if (sizeWord.equals("lg")) {
-                            LOG.debug("lg");
-                            fqStrings.add("{!frange l=810001}product(imgHeight,imgWidth)"); /*images bigger than 810000px² of area*/
+                        switch (sizeWord) {
+                            case "sm":
+                                LOG.debug("sm");
+                                fqStrings.add("{!frange u=65536 }product(imgHeight,imgWidth)"); /*images up to 65536pixels² of area - i.e. max square size of 256x256px*/
+                                break;
+                            case "md":
+                                LOG.debug("md");
+                                fqStrings.add("{!frange l=65537 u=810000 }product(imgHeight,imgWidth)"); /*images between 65537pixels² of area , up to  810000px² of area - i.e. max square size of 900x900px*/
+                                break;
+                            case "lg":
+                                LOG.debug("lg");
+                                fqStrings.add("{!frange l=810001}product(imgHeight,imgWidth)"); /*images bigger than 810000px² of area*/
+                                break;
                         }
                     }
 
