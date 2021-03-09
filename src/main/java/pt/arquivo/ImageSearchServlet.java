@@ -350,6 +350,7 @@ public class ImageSearchServlet extends HttpServlet {
 
     private void addBlockFilter(HttpServletRequest request, ArrayList<String> fqStrings) {
         fqStrings.add("blocked:0");
+        fqStrings.add("isInline:false");
     }
 
     private int getLimit(HttpServletRequest request, int limit) {
