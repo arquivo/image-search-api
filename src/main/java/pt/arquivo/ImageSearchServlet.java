@@ -732,6 +732,7 @@ public class ImageSearchServlet extends HttpServlet {
      * @return
      */
     private static Calendar currentDate() {
+        //This is initialized using current time to avoid building another Calendar object to get the current year
         Calendar DATE_END = new GregorianCalendar();
         DATE_END.set(Calendar.YEAR, DATE_END.get(Calendar.YEAR));
         DATE_END.set(Calendar.MONTH, 12 - 1);
@@ -739,6 +740,8 @@ public class ImageSearchServlet extends HttpServlet {
         DATE_END.set(Calendar.HOUR_OF_DAY, 23);
         DATE_END.set(Calendar.MINUTE, 59);
         DATE_END.set(Calendar.SECOND, 59);
+        // If you forget the miliseconds, you are going to have a bad time
+        DATE_END.set(Calendar.MILLISECOND, 0);
         return DATE_END;
     }
 
