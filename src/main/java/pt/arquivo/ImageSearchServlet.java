@@ -139,8 +139,6 @@ public class ImageSearchServlet extends HttpServlet {
         int start = 0;
         int limit = 50; /*Default number of results*/
 
-
-
         Object imgSearchResponse = null;
         ImageSearchResults imgSearchResults = null;
         String flString = ""; /*limit response fields*/
@@ -156,24 +154,32 @@ public class ImageSearchServlet extends HttpServlet {
         }
 
         // first hit to display
-        start = getResultsStart(request, start);
+        String startString = request.getParameter("offset");
+        start = getResultsStart(startString, start);
 
         // number of items to display
-        limit = getLimit(request, limit);
+        String limitString = request.getParameter("maxItems");
+        limit = getLimit(limitString, limit);
 
-        parseDates(request, fqStrings);
+        String dateStart = request.getParameter("from");
+        String dateEnd = request.getParameter("to");
+        parseDates(dateStart, dateEnd, fqStrings);
 
-        parseSafeSearch(request, fqStrings);
+        String safeSearch = request.getParameter("safeSearch");
+        parseSafeSearch(safeSearch, fqStrings);
 
-        addBlockFilter(request, fqStrings);
+        addBlockFilter(fqStrings);
 
-        parseMimeType(request, fqStrings);
+        String typeParameter = request.getParameter("type");
+        parseMimeType(typeParameter, fqStrings);
 
-        parseSizes(request, fqStrings);
+        String sizeParameter = request.getParameter("size");
+        parseSizes(sizeParameter, fqStrings);
 
         if (request.getParameter("more") != null) {
             flString += request.getParameter("more") + ",";
         }
+
         if (request.getParameter("fields") != null) {
             flString += request.getParameter("fields");
         } else { //default params
@@ -182,13 +188,15 @@ public class ImageSearchServlet extends HttpServlet {
 
         StringBuilder flStringV2 = new StringBuilder();
         for (String field : flString.split(","))
-            flStringV2.append(APIVersionTranslator.v1Tov2(field) + ",");
+            flStringV2.append(APIVersionTranslator.v1Tov2(field)).append(",");
         flString = flStringV2.toString();
 
 
-        parseSiteFilter(request, fqStrings);
+        String siteSearch = request.getParameter("siteSearch");
+        parseSiteFilter(siteSearch, fqStrings);
 
-        parseCollectionFilter(request, fqStrings);
+        String requestedCollection = request.getParameter("collection");
+        parseCollectionFilter(requestedCollection, fqStrings);
 
         /*Process operators such as site: type: and site: inside the q parameter*/
         /*Should we allow people to use those operators when calling the api e.g.
@@ -340,21 +348,18 @@ public class ImageSearchServlet extends HttpServlet {
         return offsetPreviousPage;
     }
 
-    private void parseSafeSearch(HttpServletRequest request, ArrayList<String> fqStrings) {
-        String safeSearch;
-        safeSearch = request.getParameter("safeSearch");
-        if (!"off".equals(safeSearch)) {
+    private void parseSafeSearch(String safeSearch, ArrayList<String> fqStrings) {
+        if (!"off".equalsIgnoreCase(safeSearch)) {
             fqStrings.add("safe:[0 TO 0.49]"); /*Default behaviour is to limit safe score from 0 -> 0.49; else show all images*/
         }
     }
 
-    private void addBlockFilter(HttpServletRequest request, ArrayList<String> fqStrings) {
+    private void addBlockFilter(ArrayList<String> fqStrings) {
         fqStrings.add("blocked:0");
         fqStrings.add("isInline:false");
     }
 
-    private int getLimit(HttpServletRequest request, int limit) {
-        String limitString = request.getParameter("maxItems");
+    private int getLimit(String limitString, int limit) {
         if (limitString != null)
             limit = parseToIntWithDefault(limitString, 50);
 
@@ -366,8 +371,7 @@ public class ImageSearchServlet extends HttpServlet {
         return limit;
     }
 
-    private int getResultsStart(HttpServletRequest request, int start) {
-        String startString = request.getParameter("offset");
+    private int getResultsStart(String startString, int start) {
         if (startString != null)
             start = parseToIntWithDefault(startString, 0);
         return start;
@@ -430,17 +434,16 @@ public class ImageSearchServlet extends HttpServlet {
         return solr;
     }
 
-    private void parseCollectionFilter(HttpServletRequest request, ArrayList<String> fqStrings) {
-        String requestedCollection = request.getParameter("collection");
-        if (requestedCollection != null && requestedCollection.length() > 0) {
-            fqStrings.add(Arrays.asList(requestedCollection.split(",")).stream().map(c -> "collection:" + c).collect(Collectors.joining(" OR ")));
+    private void parseCollectionFilter(String requestedCollection, ArrayList<String> fqStrings) {
+        if (requestedCollection != null && !requestedCollection.isEmpty()) {
+            fqStrings.add(Arrays.stream(requestedCollection.split(",")).map(c -> "collection:" + c).collect(Collectors.joining(" OR ")));
         }
     }
 
-    private void parseSiteFilter(HttpServletRequest request, ArrayList<String> fqStrings) {
-        if (request.getParameter("siteSearch") != null) {
+    private void parseSiteFilter(String siteSearch, ArrayList<String> fqStrings) {
+        if (siteSearch != null) {
             StringBuilder domainsFilter = new StringBuilder();
-            for (String domainUnescaped : request.getParameter("siteSearch").split(",")) {
+            for (String domainUnescaped : siteSearch.split(",")) {
                 String domain = ClientUtils.escapeQueryChars(domainUnescaped);
                 // unescape *, as it is needed to match all subdomains
                 // https://github.com/arquivo/pwa-technologies/issues/1014
@@ -457,24 +460,15 @@ public class ImageSearchServlet extends HttpServlet {
         }
     }
 
-    private void parseMimeType(HttpServletRequest request, ArrayList<String> fqStrings) {
-        String typeParameter = request.getParameter("type");
-        if (typeParameter == null)
-            typeParameter = "";
-        if (!typeParameter.equals("")) {
-            if (typeParameter.toLowerCase().equals("jpeg") || typeParameter.toLowerCase().equals("jpg")) {
-                fqStrings.add("imgMimeType:image/jpeg OR imgMimeType:image/jpg");
-            } else {
-                fqStrings.add("imgMimeType: image/" + typeParameter);
-            }
+    private void parseMimeType(String typeParameter, ArrayList<String> fqStrings) {
+        if (typeParameter != null && !typeParameter.isEmpty()) {
+            typeParameter = typeParameter.replaceAll("jpg", "jpeg");
+            fqStrings.add(Arrays.stream(typeParameter.split(",")).map(c -> "imgMimeType: image/" + c).collect(Collectors.joining(" OR ")));
         }
     }
 
-    private void parseSizes(HttpServletRequest request, ArrayList<String> fqStrings) {
-        String sizeParameter = request.getParameter("size");
-        if (sizeParameter == null)
-            sizeParameter = "";
-        if (!sizeParameter.equals("")) {
+    private void parseSizes(String sizeParameter, ArrayList<String> fqStrings) {
+        if (sizeParameter != null && !sizeParameter.equals("")) {
             switch (sizeParameter) {
                 case "sm":
                     fqStrings.add("{!frange u=65536 }product(imgHeight,imgWidth)"); /*images up to 65536pixels² of area - i.e. max square size of 256x256px*/
@@ -489,21 +483,25 @@ public class ImageSearchServlet extends HttpServlet {
         }
     }
 
-    private void parseDates(HttpServletRequest request, ArrayList<String> fqStrings) {
+    private void parseDates(String dateStart, String dateEnd, ArrayList<String> fqStrings) {
         // date restriction
         SimpleDateFormat V1_DATE_FORMAT = (SimpleDateFormat) APIVersionTranslator.V1_DATE_FORMAT.clone();
         SimpleDateFormat V2_DATE_FORMAT = (SimpleDateFormat) APIVersionTranslator.V2_DATE_FORMAT.clone();
 
-        String dateStart = request.getParameter("from");
+        /*
         if (dateStart == null || dateStart.length() == 0) {
             dateStart = "1996-01-01T00:00:00Z";
             //dateStart = FORMAT_OUT.format( dateStart );
         }
-        String dateEnd = request.getParameter("to");
+
         if (dateEnd == null || dateEnd.length() == 0) {
             Calendar dateEND = currentDate();
             dateEnd = V2_DATE_FORMAT.format(dateEND.getTime());
         }
+        */
+
+        if (dateStart == null && dateEnd == null)
+            return;
 
         if (dateStart != null && dateEnd != null) { //Logic to accept pages with yyyy and yyyyMMddHHmmss format
 
@@ -551,70 +549,34 @@ public class ImageSearchServlet extends HttpServlet {
         if (q.contains("fq:") || q.contains("site:") || q.contains("type:") || q.contains("safe:") || q.contains("size:") || q.contains("collapse:")) { /*query has a special operator we need to deal with it*/
             LOG.debug("found special operator");
             String[] words = q.split(" ");
-            ArrayList<String> cleanWords = new ArrayList<String>();
+            ArrayList<String> cleanWords = new ArrayList<>();
             for (String word : words) {
                 if (word.toLowerCase().startsWith("site:")) {
                     LOG.debug("found site:");
                     String domains = ClientUtils.escapeQueryChars(word.replace("site:", ""));
-                    StringBuilder domainsFilter = new StringBuilder();
-                    for (String domain : domains.split(",")) {
-                        // unescape *, as it is needed to match all subdomains
-                        // https://github.com/arquivo/pwa-technologies/issues/1014
-                        // https://github.com/arquivo/pwa-technologies/issues/987
-                        domain = domain.replace("\\*", "*");
-                        if (!domain.isEmpty()) {
-                            if (domainsFilter.length() != 0)
-                                domainsFilter.append(" OR ");
-                            domainsFilter.append("pageHost:");
-                            domainsFilter.append(domain);
-                        }
+                    parseSiteFilter(domains, fqStrings);
+                } else if (word.toLowerCase().startsWith("type:")) {
+                    LOG.debug("found type:");
+                    String typeWord = word.replace("type:", "");
+                    parseMimeType(typeWord, fqStrings);
+                } else if (word.toLowerCase().startsWith("safe:")) {
+                    LOG.debug("found safe:");
+                    String safeWord = word.replace("safe:", "");
+
+                    if (safeWord.equalsIgnoreCase("off") || safeWord.equalsIgnoreCase("on")) {
+                        removeMatchingFqString("safe", fqStrings);
                     }
-                    fqStrings.add(domainsFilter.toString());
+
+                    parseSafeSearch(safeWord, fqStrings);
+                } else if (word.toLowerCase().startsWith("size:")) {
+                    LOG.debug("found size:");
+                    String sizeWord = word.replace("size:", "").toLowerCase();
+                    parseSizes(sizeWord, fqStrings);
                 } else if (word.toLowerCase().startsWith("collapse:")) {
                     LOG.debug("found collapse:");
                     //fqStrings.remove("{!collapse field=imgDigest}");
                     String collapse = ClientUtils.escapeQueryChars(word.replace("collapse:", ""));
                     fqStrings.add(String.format("{!collapse field=%s}", collapse));
-                } else if (word.toLowerCase().startsWith("type:")) {
-                    LOG.debug("found type:");
-                    String typeWord = word.replace("type:", "");
-                    if (!typeWord.equals("")) {
-                        if (typeWord.toLowerCase().equals("jpeg") || typeWord.toLowerCase().equals("jpg")) {
-                            fqStrings.add("imgMimeType:image/jpeg OR imgMimeType:image/jpg");
-                        } else {
-                            fqStrings.add("imgMimeType: image/" + typeWord);
-                        }
-                    }
-                } else if (word.toLowerCase().startsWith("safe:")) {
-                    LOG.debug("found safe:");
-                    String safeWord = word.replace("safe:", "");
-                    if (safeWord.toLowerCase().equals("off") || safeWord.toLowerCase().equals("on")) {
-                        removeMatchingFqString("safe", fqStrings);
-                    }
-                    if (!safeWord.toLowerCase().equals("off")) {
-                        fqStrings.add("safe:[0 TO 0.49]"); /*Default behaviour is to limit safe score from 0 -> 0.49; else show all images*/
-                    }
-                } else if (word.toLowerCase().startsWith("size:")) {
-                    LOG.debug("found size:");
-                    String sizeWord = word.replace("size:", "").toLowerCase();
-                    LOG.debug("size word: " + sizeWord);
-                    if (!sizeWord.equals("")) {
-                        switch (sizeWord) {
-                            case "sm":
-                                LOG.debug("sm");
-                                fqStrings.add("{!frange u=65536 }product(imgHeight,imgWidth)"); /*images up to 65536pixels² of area - i.e. max square size of 256x256px*/
-                                break;
-                            case "md":
-                                LOG.debug("md");
-                                fqStrings.add("{!frange l=65537 u=810000 }product(imgHeight,imgWidth)"); /*images between 65537pixels² of area , up to  810000px² of area - i.e. max square size of 900x900px*/
-                                break;
-                            case "lg":
-                                LOG.debug("lg");
-                                fqStrings.add("{!frange l=810001}product(imgHeight,imgWidth)"); /*images bigger than 810000px² of area*/
-                                break;
-                        }
-                    }
-
                 } else if (word.toLowerCase().startsWith("fq:")) {
                     LOG.debug("found fq:");
                     String filterWords = word.replace("fq:", "");
@@ -624,7 +586,6 @@ public class ImageSearchServlet extends HttpServlet {
                         removeMatchingFqString(filterWordToken.split(":")[0], fqStrings);
                         fqStrings.add(filterWordToken);
                     }
-
                 } else {
                     LOG.debug(" found clean word");
                     cleanWords.add(word);
@@ -687,6 +648,7 @@ public class ImageSearchServlet extends HttpServlet {
         for (int i = 0; i < fqStrings.size(); i++) {
             if (fqStrings.get(i).startsWith(field)) {
                 fqStrings.remove(i);
+                i--;
             }
         }
     }
@@ -740,7 +702,7 @@ public class ImageSearchServlet extends HttpServlet {
         DATE_END.set(Calendar.HOUR_OF_DAY, 23);
         DATE_END.set(Calendar.MINUTE, 59);
         DATE_END.set(Calendar.SECOND, 59);
-        // If you forget the miliseconds, you are going to have a bad time
+        // If you forget the milliseconds, you are going to have a bad time
         DATE_END.set(Calendar.MILLISECOND, 0);
         return DATE_END;
     }
