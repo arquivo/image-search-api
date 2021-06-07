@@ -71,7 +71,6 @@ public class ImageSearchServlet extends HttpServlet {
      * HttpServlet init method.
      *
      * @param config: nutchwax configuration
-     * @return void
      */
     public void init(ServletConfig config) throws ServletException {
         collectionsHost = config.getInitParameter("waybackHost");
@@ -423,10 +422,8 @@ public class ImageSearchServlet extends HttpServlet {
     private SolrClient createSolr(String solrHost, String solrCollection) {
         SolrClient solr = null;
         if (solrHost.contains(",")) {
-            Builder builder = new CloudSolrClient.Builder();
-            builder.withZkHost(
-                    Arrays.asList(new String[]{solrHost}));
-            solr = (CloudSolrClient) builder.build();
+            final List<String> zkServers = Arrays.asList(solrHost.split(","));
+            solr = new CloudSolrClient.Builder(zkServers, Optional.of("/solr")).build();
             ((CloudSolrClient) solr).setDefaultCollection(solrCollection);
         } else {
             solr = new HttpSolrClient.Builder(solrHost + solrCollection).build();
@@ -677,7 +674,7 @@ public class ImageSearchServlet extends HttpServlet {
      */
     private static Boolean tryParse(DateFormat df, String s) {
         DateFormat df2 = (DateFormat) df.clone();
-        Boolean valid = false;
+        boolean valid = false;
         try {
             df2.parse(s);
             valid = true;
@@ -689,9 +686,9 @@ public class ImageSearchServlet extends HttpServlet {
 
 
     /**
-     * Returns the current date in the format (YYYYMMDDHHMMSS)
+     * Returns the current arquivo image search default end date (the last day of the year)
      *
-     * @return
+     * @return current date in the format (YYYYMMDDHHMMSS)
      */
     private static Calendar currentDate() {
         //This is initialized using current time to avoid building another Calendar object to get the current year
