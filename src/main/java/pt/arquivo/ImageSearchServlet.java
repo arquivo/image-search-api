@@ -188,6 +188,11 @@ public class ImageSearchServlet extends HttpServlet {
         StringBuilder flStringV2 = new StringBuilder();
         for (String field : flString.split(","))
             flStringV2.append(APIVersionTranslator.v1Tov2(field)).append(",");
+        // We always want URL and timestamp:
+        if(flStringV2.indexOf("imgSrc") < 0)
+            flStringV2.append("imgSrc").append(",");
+        if(flStringV2.indexOf(V2_IMAGETSTAMP) < 0)
+            flStringV2.append(V2_IMAGETSTAMP).append(",");
         flString = flStringV2.toString();
 
 
