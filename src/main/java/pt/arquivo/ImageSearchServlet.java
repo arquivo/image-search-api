@@ -269,23 +269,7 @@ public class ImageSearchServlet extends HttpServlet {
 
             String linkToMoreFields = requestURL.replaceAll("&more=([^&]+)", "").concat("&more=" + V1_MOREFIELDS);
 
-            imgSearchResults = new ImageSearchResults(numFound, documents.size(), responseSolr.getResults().getStart(), linkToMoreFields, nextPage, previousPage, documents, prettyOutput);
-            
-            // Make sure only the requested fields are present in the reply
-            if(imgSearchResults.responseItems.size() > 0 && request.getParameter("fields") != null)   {
-                String[] validFields = request.getParameter("fields").split(",");
-                ArrayList<String> fieldsToRemove = new ArrayList<String>();
-                for (String field : imgSearchResults.responseItems.get(0).getFieldNames()){
-                    if(!Arrays.stream(validFields).anyMatch(field::equals)){
-                        fieldsToRemove.add(field);
-                    }
-                }
-                for (int i=0; i<imgSearchResults.responseItems.size(); i++){
-                    for (String field : fieldsToRemove){
-                        imgSearchResults.responseItems.get(i).removeFields(field);
-                    }
-                }
-            }
+            imgSearchResults = new ImageSearchResults(request.getParameter("fields").split(","), numFound, documents.size(), responseSolr.getResults().getStart(), linkToMoreFields, nextPage, previousPage, documents, prettyOutput);
             
             if (request.getParameter("debug") != null && request.getParameter("debug").equals("on")) {
                 imgSearchResponse = new ImageSearchResponseDebug(responseSolr.getResponseHeader(), imgSearchResults);

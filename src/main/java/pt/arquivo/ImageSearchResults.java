@@ -1,6 +1,8 @@
 package pt.arquivo;
 
 import java.text.SimpleDateFormat;
+import java.util.Dictionary;
+import java.util.Hashtable;
 import java.util.Set;
 
 import org.apache.solr.common.SolrDocument;
@@ -27,12 +29,14 @@ public class ImageSearchResults {
     public static final String V2_PAGEURL = "pageUrl";
     public static final String V2_PAGETSTAMP = "pageCrawlTimestamp";
     public static final String V2_WAYBACKADDRESS = "https://arquivo.pt/wayback/";
-
+    
+    // Hashtable to quickly check if each field should be included in the returned document (to support "fields" query)
+    private Dictionary<String,Boolean> fieldReturnability = new Hashtable<String,Boolean>();
 
 
     SolrDocumentList responseItems;
 
-    public ImageSearchResults(long totalItems, int numberOfResponseItems, long offset, String linkToMoreFields, String nextPage, String previousPage, SolrDocumentList responseItems, boolean documentation) {
+    public ImageSearchResults(String[] requestedFields, long totalItems, int numberOfResponseItems, long offset, String linkToMoreFields, String nextPage, String previousPage, SolrDocumentList responseItems, boolean documentation) {
         this.nextPage = nextPage;
         this.previousPage = previousPage;
 
@@ -50,11 +54,11 @@ public class ImageSearchResults {
 
         this.V1_DATE_FORMAT = (SimpleDateFormat)APIVersionTranslator.V1_DATE_FORMAT.clone();
 
-        this.responseItems = parseDocuments(responseItems);
+        this.responseItems = parseDocuments(requestedFields, responseItems);
 
     }
 
-    private SolrDocumentList parseDocuments(SolrDocumentList response_items) {
+    private SolrDocumentList parseDocuments(String[] requestedFields, SolrDocumentList response_items) {
         SolrDocumentList processedDocs = new SolrDocumentList();
         SolrDocument current = null;
 
@@ -63,39 +67,56 @@ public class ImageSearchResults {
             current = response_item;
             Set<String> keyNames = current.keySet();
             for (String key : keyNames) {
-                switch (key) {
-                    case V2_SAFE:
-                        newDocument.addField(APIVersionTranslator.v2Tov1(V2_SAFE), 1.0f - (float) current.getFieldValue(V2_SAFE));
-                        break;
-                    case V2_PAGETSTAMP:
-                        newDocument.addField(APIVersionTranslator.v2Tov1(V2_PAGETSTAMP), this.V1_DATE_FORMAT.format(current.getFieldValue(V2_PAGETSTAMP)));
-                        break;
-                    case V2_IMAGETSTAMP:
-                        newDocument.addField(APIVersionTranslator.v2Tov1(V2_IMAGETSTAMP), this.V1_DATE_FORMAT.format(current.getFieldValue(V2_IMAGETSTAMP)));
-                        break;
-                    default:
-                        newDocument.addField(APIVersionTranslator.v2Tov1(key), current.getFieldValue(key));
-                        break;
+                if(isRequestedField(requestedFields, APIVersionTranslator.v2Tov1(key))){
+                    switch (key) {
+                        case V2_SAFE:
+                            newDocument.addField(APIVersionTranslator.v2Tov1(V2_SAFE), 1.0f - (float) current.getFieldValue(V2_SAFE));
+                            break;
+                        case V2_PAGETSTAMP:
+                            newDocument.addField(APIVersionTranslator.v2Tov1(V2_PAGETSTAMP), this.V1_DATE_FORMAT.format(current.getFieldValue(V2_PAGETSTAMP)));
+                            break;
+                        case V2_IMAGETSTAMP:
+                            newDocument.addField(APIVersionTranslator.v2Tov1(V2_IMAGETSTAMP), this.V1_DATE_FORMAT.format(current.getFieldValue(V2_IMAGETSTAMP)));
+                            break;
+                        default:
+                            newDocument.addField(APIVersionTranslator.v2Tov1(key), current.getFieldValue(key));
+                            break;
+                    }
                 }
             }
-            String V1_IMAGEURL = APIVersionTranslator.v2Tov1(V2_IMAGEURL);
-            String V1_IMAGETSTAMP = APIVersionTranslator.v2Tov1(V2_IMAGETSTAMP);
+
             String V1_IMAGELINKTOARCHIVE = APIVersionTranslator.v2Tov1(V2_IMAGELINKTOARCHIVE);
 
-            if (newDocument.containsKey(V1_IMAGEURL) && newDocument.containsKey(V1_IMAGETSTAMP)) {
-                newDocument.addField(V1_IMAGELINKTOARCHIVE, V2_WAYBACKADDRESS + newDocument.getFieldValue(V1_IMAGETSTAMP) + "im_/" + newDocument.getFieldValue(V1_IMAGEURL));
+            if (isRequestedField(requestedFields,V1_IMAGELINKTOARCHIVE)) {
+                String tstamp = this.V1_DATE_FORMAT.format(current.getFieldValue(V2_IMAGETSTAMP));
+                String url = (String) current.getFieldValue(V2_IMAGEURL);
+                newDocument.addField(V1_IMAGELINKTOARCHIVE, V2_WAYBACKADDRESS + tstamp + "im_/" + url);
             }
 
-            String V1_PAGEURL = APIVersionTranslator.v2Tov1(V2_PAGEURL);
-            String V1_PAGETSTAMP = APIVersionTranslator.v2Tov1(V2_PAGETSTAMP);
             String V1_PAGELINKTOARCHIVE = APIVersionTranslator.v2Tov1(V2_PAGELINKTOARCHIVE);
 
-            if (newDocument.containsKey(V1_PAGEURL) && newDocument.containsKey(V1_PAGETSTAMP)) {
-                newDocument.addField(V1_PAGELINKTOARCHIVE, V2_WAYBACKADDRESS + newDocument.getFieldValue(V1_PAGETSTAMP) + "/" + newDocument.getFieldValue(V1_PAGEURL));
+            if (isRequestedField(requestedFields, V1_PAGELINKTOARCHIVE)) {
+                String tstamp = this.V1_DATE_FORMAT.format(current.getFieldValue(V2_PAGETSTAMP));
+                String url = (String) current.getFieldValue(V2_PAGETSTAMP);
+                newDocument.addField(V1_PAGELINKTOARCHIVE, V2_WAYBACKADDRESS + tstamp + "/" + url);
             }
 
             processedDocs.add(newDocument);
         }
         return processedDocs;
+    }
+
+    private Boolean isRequestedField(String[] requestedFields, String field){
+        if (this.fieldReturnability.get(field)==null){
+            Boolean r = false;
+            for (String f:requestedFields){
+                if (f.equals(field)){
+                    r = true;
+                    break;
+                }
+            }
+            fieldReturnability.put(field, r);
+        }
+        return this.fieldReturnability.get(field);
     }
 }
