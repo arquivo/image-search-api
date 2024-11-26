@@ -13,7 +13,7 @@ public class ImageSearchResults {
     private SimpleDateFormat V1_DATE_FORMAT;
 
     String serviceName = "Arquivo.pt - image search service.";
-    String linkToService = "https://arquivo.pt/images.jsp";
+    String linkToService = ImageSearchProperties.get("linkToService");
     String linkToDocumentation;
     String linkToMoreFields = "";
     String nextPage = "";
@@ -28,7 +28,7 @@ public class ImageSearchResults {
     public static final String V2_PAGELINKTOARCHIVE = "pageLinkToArchive";
     public static final String V2_PAGEURL = "pageUrl";
     public static final String V2_PAGETSTAMP = "pageCrawlTimestamp";
-    public static final String V2_WAYBACKADDRESS = "https://arquivo.pt/wayback/";
+    public static final String V2_WAYBACKADDRESS = ImageSearchProperties.get("waybackAddress");
     
     // Hashtable to quickly check if each field should be included in the returned document (to support "fields" query)
     private Dictionary<String,Boolean> fieldReturnability = new Hashtable<String,Boolean>();
