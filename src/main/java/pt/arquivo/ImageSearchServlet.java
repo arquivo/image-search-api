@@ -307,13 +307,7 @@ public class ImageSearchServlet extends HttpServlet {
             throw new ServletException(e);
         }
 
-        //TODO: callback option and setting jsonp content type in that case
-        if (request.getParameter("callback") != null && !request.getParameter("callback").equals("")) {
-            jsonSolrResponse = request.getParameter("callback") + "(" + jsonSolrResponse + ");";
-            response.setContentType("text/javascript"); //jsonp
-        } else {
-            response.setContentType("application/json"); //json
-        }
+        response.setContentType("application/json"); //json
 
         response.setCharacterEncoding("UTF-8");
 
