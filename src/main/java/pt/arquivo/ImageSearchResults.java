@@ -89,7 +89,7 @@ public class ImageSearchResults {
 
             if (isRequestedField(requestedFields,V1_IMAGELINKTOARCHIVE)) {
                 String tstamp = this.V1_DATE_FORMAT.format(current.getFieldValue(V2_IMAGETSTAMP));
-                String url = (String) current.getFieldValue(V2_IMAGEURL);
+                String url = current.getFieldValue(V2_IMAGEURL).toString();
                 newDocument.addField(V1_IMAGELINKTOARCHIVE, V2_WAYBACKADDRESS + tstamp + "im_/" + url);
             }
 
@@ -97,7 +97,7 @@ public class ImageSearchResults {
 
             if (isRequestedField(requestedFields, V1_PAGELINKTOARCHIVE)) {
                 String tstamp = this.V1_DATE_FORMAT.format(current.getFieldValue(V2_PAGETSTAMP));
-                String url = (String) current.getFieldValue(V2_PAGETSTAMP);
+                String url = current.getFieldValue(V2_PAGEURL).toString();
                 newDocument.addField(V1_PAGELINKTOARCHIVE, V2_WAYBACKADDRESS + tstamp + "/" + url);
             }
 
@@ -116,6 +116,7 @@ public class ImageSearchResults {
                 }
             }
             fieldReturnability.put(field, r);
+            return r;
         }
         return this.fieldReturnability.get(field);
     }

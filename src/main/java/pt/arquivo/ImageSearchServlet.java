@@ -37,6 +37,8 @@ import java.util.stream.Collectors;
 import static pt.arquivo.APIVersionTranslator.V1_DATE_FORMAT;
 import static pt.arquivo.ImageSearchResults.V2_IMAGEURL;
 import static pt.arquivo.ImageSearchResults.V2_IMAGETSTAMP;
+import static pt.arquivo.ImageSearchResults.V2_PAGEURL;
+import static pt.arquivo.ImageSearchResults.V2_PAGETSTAMP;
 
 /**
  * ImageSearch API Back-End.
@@ -54,7 +56,7 @@ public class ImageSearchServlet extends HttpServlet {
     private static String solrHost = null;
     private static String solrCollection = null;
     Calendar DATE_END = new GregorianCalendar();
-    private static final String V1_DEFAULT_FL_STRING = "id,imgUrl,imgMimeType,imgHeight,imgWidth,imgCrawlTimestamp,imgTitle,imgAlt,imgCaption,pageUrl,pageCrawlTimestamp,pageTitle,collection";
+    private static final String V1_DEFAULT_FL_STRING = "imgDigest,imgSrc,imgMimeType,imgHeight,imgWidth,imgTstamp,imgTitle,imgAlt,imgCaption,pageURL,pageTstamp,pageTitle,collection,imgLinkToArchive,pageLinkToArchive";
     private static final String V1_MOREFIELDS = "pageHost,matchingImages,safe";
 
     private static final Map<String, Integer> DEFAULT_QUERY_FIELDS = new HashMap<String, Integer>() {{
@@ -185,16 +187,20 @@ public class ImageSearchServlet extends HttpServlet {
             flString += V1_DEFAULT_FL_STRING;
         }
 
-        StringBuilder flStringV2 = new StringBuilder();
+        StringBuilder V2Builder = new StringBuilder();
         for (String field : flString.split(","))
-            flStringV2.append(APIVersionTranslator.v1Tov2(field)).append(",");
+            V2Builder.append(APIVersionTranslator.v1Tov2(field)).append(",");
         // We always want URL and timestamp:
-        if(flStringV2.indexOf(V2_IMAGEURL) < 0)
-            flStringV2.append(V2_IMAGEURL).append(",");
-        if(flStringV2.indexOf(V2_IMAGETSTAMP) < 0)
-            flStringV2.append(V2_IMAGETSTAMP).append(",");
-        flString = flStringV2.toString();
-
+        if(V2Builder.indexOf(V2_IMAGEURL) < 0)
+            V2Builder.append(V2_IMAGEURL).append(",");
+        if(V2Builder.indexOf(V2_IMAGETSTAMP) < 0)
+            V2Builder.append(V2_IMAGETSTAMP).append(",");
+        if(V2Builder.indexOf(V2_PAGEURL) < 0)
+            V2Builder.append(V2_PAGEURL).append(",");
+        if(V2Builder.indexOf(V2_PAGETSTAMP) < 0)
+            V2Builder.append(V2_PAGETSTAMP).append(",");
+            
+        String flStringV2 = V2Builder.toString();
 
         String siteSearch = request.getParameter("siteSearch");
         parseSiteFilter(siteSearch, fqStrings);
@@ -241,7 +247,7 @@ public class ImageSearchServlet extends HttpServlet {
 
             solrQuery.setRows(limit);
             solrQuery.setStart(start);
-            solrQuery.set("fl", flString);
+            solrQuery.set("fl", flStringV2);
 
             addSort(sortStrings, solrQuery);
 
@@ -269,7 +275,7 @@ public class ImageSearchServlet extends HttpServlet {
 
             String linkToMoreFields = requestURL.replaceAll("&more=([^&]+)", "").concat("&more=" + V1_MOREFIELDS);
 
-            imgSearchResults = new ImageSearchResults(request.getParameter("fields").split(","), numFound, documents.size(), responseSolr.getResults().getStart(), linkToMoreFields, nextPage, previousPage, documents, prettyOutput);
+            imgSearchResults = new ImageSearchResults(flString.split(","), numFound, documents.size(), responseSolr.getResults().getStart(), linkToMoreFields, nextPage, previousPage, documents, prettyOutput);
             
             if (request.getParameter("debug") != null && request.getParameter("debug").equals("on")) {
                 imgSearchResponse = new ImageSearchResponseDebug(responseSolr.getResponseHeader(), imgSearchResults);

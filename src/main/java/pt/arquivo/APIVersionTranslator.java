@@ -7,6 +7,16 @@ import java.util.TimeZone;
 
 public class APIVersionTranslator {
 
+    // V1 = Fields this API returns 
+    // V2 = Fields that Solr returns
+
+    // All Solr fields (V2):
+    // "id", "imgUrl", "imgUrlTokens", "pageTitle", "pageUrlTokens", "imgHeight", 
+    // "imgWidth", "imgMimeType", "pageHost", "pageUrl", "isInline", "safe", "spam", 
+    // "blocked", "drawing", "hentai", "neutral", "porn", "sexy", "imagesInOriginalPage", 
+    // "imgCrawlTimestamp", "pageCrawlTimestamp", "imgCaption", "collection", 
+    // "imageMetadataChanges", "pageMetadataChanges", "matchingImages", "matchingPages", 
+    // "imgCrawlTimestampLatest", "imgAlt", "imgTitle" 
     public static final HashMap<String,String> V1_TO_V2_MAP = new HashMap<String, String>() {
         {
             {
