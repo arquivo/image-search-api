@@ -3,9 +3,13 @@ package pt.arquivo;
 import java.io.FileInputStream;
 import java.util.Properties;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 // Class to fet the configurations stored in application.properties
 public class ImageSearchProperties {
     private static Properties configs = null;
+    private static final Logger LOG = LoggerFactory.getLogger(ImageSearchServlet.class);
 
     private static Properties getConfigs() {
         if(configs == null) {
@@ -20,7 +24,7 @@ public class ImageSearchProperties {
                 configs.setProperty("linkToService", "https://arquivo.pt/images.jsp");
                 configs.setProperty("waybackAddress", "https://arquivo.pt/wayback/");
 
-                e.printStackTrace();
+                LOG.error(e.toString());
             }
         } 
         return configs;
