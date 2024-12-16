@@ -1,7 +1,7 @@
 version: "3.3"
 services:
   tomcat:
-    image: tomcat:latest
+    image: tomcat:9
     ports:
       - "8080:8080"
       - "8000:8000" # used for debug
@@ -9,5 +9,10 @@ services:
     environment:
       # start tomcat catalina on debug mode 
       CATALINA_OPTS: -agentlib:jdwp=transport=dt_socket,address=8000,server=y,suspend=n -Dcom.sun.management.jmxremote=true -Dcom.sun.management.jmxremote.rmi.port=9010 -Dcom.sun.management.jmxremote.port=9010 -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=false
+    # command to add additonal environment variables, otherwise stuff will break
+    command: bash -c "cp /tmp/lib/additional_catalina_params.txt /usr/local/tomcat/bin/setenv.sh && chmod 755 /usr/local/tomcat/bin/setenv.sh && catalina.sh run"
     volumes:
       - ./target/image-search-api:/usr/local/tomcat/webapps/ROOT
+      # uncomment this to access tomcat logs without having to enter the docker container:
+      # - ./logs:/usr/local/tomcat/logs
+      - ./lib:/tmp/lib

@@ -1,16 +1,11 @@
 package pt.arquivo;
 
-import com.ctc.wstx.util.SimpleCache;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParseException;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
-import org.apache.solr.client.solrj.impl.CloudSolrClient.Builder;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.client.solrj.util.ClientUtils;
@@ -26,6 +21,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.DateFormat;
@@ -37,6 +33,8 @@ import java.util.stream.Collectors;
 import static pt.arquivo.APIVersionTranslator.V1_DATE_FORMAT;
 import static pt.arquivo.ImageSearchResults.V2_IMAGEURL;
 import static pt.arquivo.ImageSearchResults.V2_IMAGETSTAMP;
+import static pt.arquivo.ImageSearchResults.V2_PAGEURL;
+import static pt.arquivo.ImageSearchResults.V2_PAGETSTAMP;
 
 /**
  * ImageSearch API Back-End.
@@ -54,7 +52,7 @@ public class ImageSearchServlet extends HttpServlet {
     private static String solrHost = null;
     private static String solrCollection = null;
     Calendar DATE_END = new GregorianCalendar();
-    private static final String V1_DEFAULT_FL_STRING = "id,imgUrl,imgMimeType,imgHeight,imgWidth,imgCrawlTimestamp,imgTitle,imgAlt,imgCaption,pageUrl,pageCrawlTimestamp,pageTitle,collection";
+    private static final String V1_DEFAULT_FL_STRING = "imgDigest,imgSrc,imgMimeType,imgHeight,imgWidth,imgTstamp,imgTitle,imgAlt,imgCaption,pageURL,pageTstamp,pageTitle,collection,imgLinkToArchive,pageLinkToArchive";
     private static final String V1_MOREFIELDS = "pageHost,matchingImages,safe";
 
     private static final Map<String, Integer> DEFAULT_QUERY_FIELDS = new HashMap<String, Integer>() {{
@@ -65,7 +63,6 @@ public class ImageSearchServlet extends HttpServlet {
         put("pageTitle", 1);
         put("pageUrlTokens", 1);
     }};
-
 
     /**
      * HttpServlet init method.
@@ -185,11 +182,20 @@ public class ImageSearchServlet extends HttpServlet {
             flString += V1_DEFAULT_FL_STRING;
         }
 
-        StringBuilder flStringV2 = new StringBuilder();
+        StringBuilder V2Builder = new StringBuilder();
         for (String field : flString.split(","))
-            flStringV2.append(APIVersionTranslator.v1Tov2(field)).append(",");
-        flString = flStringV2.toString();
-
+            V2Builder.append(APIVersionTranslator.v1Tov2(field)).append(",");
+        // We always want URL and timestamp:
+        if(V2Builder.indexOf(V2_IMAGEURL) < 0)
+            V2Builder.append(V2_IMAGEURL).append(",");
+        if(V2Builder.indexOf(V2_IMAGETSTAMP) < 0)
+            V2Builder.append(V2_IMAGETSTAMP).append(",");
+        if(V2Builder.indexOf(V2_PAGEURL) < 0)
+            V2Builder.append(V2_PAGEURL).append(",");
+        if(V2Builder.indexOf(V2_PAGETSTAMP) < 0)
+            V2Builder.append(V2_PAGETSTAMP).append(",");
+            
+        String flStringV2 = V2Builder.toString();
 
         String siteSearch = request.getParameter("siteSearch");
         parseSiteFilter(siteSearch, fqStrings);
@@ -236,7 +242,7 @@ public class ImageSearchServlet extends HttpServlet {
 
             solrQuery.setRows(limit);
             solrQuery.setStart(start);
-            solrQuery.set("fl", flString);
+            solrQuery.set("fl", flStringV2);
 
             addSort(sortStrings, solrQuery);
 
@@ -264,7 +270,8 @@ public class ImageSearchServlet extends HttpServlet {
 
             String linkToMoreFields = requestURL.replaceAll("&more=([^&]+)", "").concat("&more=" + V1_MOREFIELDS);
 
-            imgSearchResults = new ImageSearchResults(numFound, documents.size(), responseSolr.getResults().getStart(), linkToMoreFields, nextPage, previousPage, documents, prettyOutput);
+            imgSearchResults = new ImageSearchResults(flString.split(","), numFound, documents.size(), responseSolr.getResults().getStart(), linkToMoreFields, nextPage, previousPage, documents, prettyOutput);
+            
             if (request.getParameter("debug") != null && request.getParameter("debug").equals("on")) {
                 imgSearchResponse = new ImageSearchResponseDebug(responseSolr.getResponseHeader(), imgSearchResults);
             } else {
@@ -300,13 +307,7 @@ public class ImageSearchServlet extends HttpServlet {
             throw new ServletException(e);
         }
 
-        //TODO: callback option and setting jsonp content type in that case
-        if (request.getParameter("callback") != null && !request.getParameter("callback").equals("")) {
-            jsonSolrResponse = request.getParameter("callback") + "(" + jsonSolrResponse + ");";
-            response.setContentType("text/javascript"); //jsonp
-        } else {
-            response.setContentType("application/json"); //json
-        }
+        response.setContentType("application/json"); //json
 
         response.setCharacterEncoding("UTF-8");
 
