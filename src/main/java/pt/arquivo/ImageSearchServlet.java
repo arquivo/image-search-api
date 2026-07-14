@@ -70,9 +70,14 @@ public class ImageSearchServlet extends HttpServlet {
      * @param config: nutchwax configuration
      */
     public void init(ServletConfig config) throws ServletException {
-        collectionsHost = config.getInitParameter("waybackHost");
-        solrHost = config.getInitParameter("solrServer");
-        solrCollection = config.getInitParameter("solrCollection");
+        collectionsHost = System.getenv("WAYBACK_HOST");
+        if (collectionsHost == null) collectionsHost = config.getInitParameter("waybackHost");
+
+        solrHost = System.getenv("SOLR_SERVER");
+        if (solrHost == null) solrHost = config.getInitParameter("solrServer");
+
+        solrCollection = System.getenv("SOLR_COLLECTION");
+        if (solrCollection == null) solrCollection = config.getInitParameter("solrCollection");
 
         if (collectionsHost == null) {
             LOG.debug("[init] Null waybackHost parameter in Web.xml");
@@ -81,12 +86,11 @@ public class ImageSearchServlet extends HttpServlet {
             LOG.debug("[init] Null solrHost parameter in Web.xml");
         }
         if (solrCollection == null) {
-            LOG.debug("[init] Null waybackHost parameter in Web.xml");
+            LOG.debug("[init] Null solrCollection parameter in Web.xml");
             throw new ServletException("ERROR solrCollection in Web.xml");
         }
 
         solr = createSolr(solrHost, solrCollection);
-
     }
 
 

@@ -6,7 +6,7 @@ import java.util.Properties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// Class to fet the configurations stored in application.properties
+// Class to get the configurations stored in application.properties
 public class ImageSearchProperties {
     private static Properties configs = null;
     private static final Logger LOG = LoggerFactory.getLogger(ImageSearchServlet.class);
@@ -20,17 +20,19 @@ public class ImageSearchProperties {
             try {
                 configs.load(new FileInputStream(appConfigPath));
             } catch (Exception e) {
-                // Fail-safe properties 
                 configs.setProperty("linkToService", "https://arquivo.pt/images.jsp");
                 configs.setProperty("waybackAddress", "https://arquivo.pt/wayback/");
 
                 LOG.error(e.toString());
             }
-        } 
+        }
         return configs;
     }
-    
+
     public static String get(String key){
+        String envKey = key.replaceAll("([A-Z])", "_$1").toUpperCase();
+        String envVal = System.getenv(envKey);
+        if (envVal != null) return envVal;
         return getConfigs().getProperty(key);
     }
 }

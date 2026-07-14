@@ -1,18 +1,16 @@
 version: "3.3"
 services:
-  tomcat:
-    image: tomcat:9
+  image-search-api:
+    build: .
     ports:
       - "8080:8080"
-      - "8000:8000" # used for debug
-      - "9010:9010" # used for debug
+      # - "8000:8000" # debug
+      # - "9010:9010" # debug
     environment:
-      # start tomcat catalina on debug mode 
-      CATALINA_OPTS: -agentlib:jdwp=transport=dt_socket,address=8000,server=y,suspend=n -Dcom.sun.management.jmxremote=true -Dcom.sun.management.jmxremote.rmi.port=9010 -Dcom.sun.management.jmxremote.port=9010 -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=false
-    # command to add additonal environment variables, otherwise stuff will break
-    command: bash -c "cp /tmp/lib/additional_catalina_params.txt /usr/local/tomcat/bin/setenv.sh && chmod 755 /usr/local/tomcat/bin/setenv.sh && catalina.sh run"
-    volumes:
-      - ./target/image-search-api:/usr/local/tomcat/webapps/ROOT
-      # uncomment this to access tomcat logs without having to enter the docker container:
-      # - ./logs:/usr/local/tomcat/logs
-      - ./lib:/tmp/lib
+      SOLR_SERVER: http://p44.arquivo.pt:8983/solr/
+      SOLR_COLLECTION: images
+      WAYBACK_HOST: arquivo.pt/wayback/wayback
+      LINK_TO_SERVICE: https://arquivo.pt/images.jsp
+      WAYBACK_ADDRESS: https://arquivo.pt/wayback/
+      # enable debug mode:
+      # CATALINA_OPTS: -agentlib:jdwp=transport=dt_socket,address=8000,server=y,suspend=n -Dcom.sun.management.jmxremote=true -Dcom.sun.management.jmxremote.rmi.port=9010 -Dcom.sun.management.jmxremote.port=9010 -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=false
