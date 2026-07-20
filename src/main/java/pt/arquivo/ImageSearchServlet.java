@@ -486,20 +486,15 @@ public class ImageSearchServlet extends HttpServlet {
         SimpleDateFormat V1_DATE_FORMAT = (SimpleDateFormat) APIVersionTranslator.V1_DATE_FORMAT.clone();
         SimpleDateFormat V2_DATE_FORMAT = (SimpleDateFormat) APIVersionTranslator.V2_DATE_FORMAT.clone();
 
-        /*
-        if (dateStart == null || dateStart.length() == 0) {
-            dateStart = "1996-01-01T00:00:00Z";
-            //dateStart = FORMAT_OUT.format( dateStart );
-        }
-
-        if (dateEnd == null || dateEnd.length() == 0) {
-            Calendar dateEND = currentDate();
-            dateEnd = V2_DATE_FORMAT.format(dateEND.getTime());
-        }
-        */
-
         if (dateStart == null && dateEnd == null)
             return;
+
+        // default the missing bound so a partial date filter doesn't crash Solr with "Invalid Date String:'null'"
+        // https://github.com/arquivo/pwa-technologies/issues/1561
+        if (dateStart == null || dateStart.isEmpty())
+            dateStart = "1996-01-01T00:00:00Z";
+        if (dateEnd == null || dateEnd.isEmpty())
+            dateEnd = V2_DATE_FORMAT.format(currentDate().getTime());
 
         if (dateStart != null && dateEnd != null) { //Logic to accept pages with yyyy and yyyyMMddHHmmss format
 
