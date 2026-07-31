@@ -459,7 +459,11 @@ public class ImageSearchServlet extends HttpServlet {
                     domainsFilter.append(domain);
                 }
             }
-            fqStrings.add(domainsFilter.toString());
+            // Only add a filter if we actually built one; otherwise siteSearch="" (or ",") would
+            // add an empty fq string to the Solr query.
+            if (domainsFilter.length() != 0) {
+                fqStrings.add(domainsFilter.toString());
+            }
         }
     }
 

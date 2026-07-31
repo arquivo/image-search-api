@@ -279,6 +279,15 @@ class ImageSearchServletTest {
     }
 
     @Test
+    void emptySiteSearchAddsNoFilterQuery() throws Exception {
+        params.put("siteSearch", "");
+
+        SolrQuery solrQuery = runAndCaptureSolrQuery();
+
+        assertFalse(filterQueries(solrQuery).contains(""));
+    }
+
+    @Test
     void collectionFilterJoinsMultipleCollectionsWithOr() throws Exception {
         params.put("collection", "foo,bar");
 
