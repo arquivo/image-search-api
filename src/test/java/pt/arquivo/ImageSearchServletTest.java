@@ -339,6 +339,19 @@ class ImageSearchServletTest {
     }
 
     @Test
+    void fqOperatorWithMultipleSemicolonSeparatedTokensAndUnderscoreUnescaping() throws Exception {
+        params.put("q", "cats fq:blocked:1;pageHost:example_com");
+
+        SolrQuery solrQuery = runAndCaptureSolrQuery();
+
+        assertEquals("cats", solrQuery.getQuery());
+        List<String> fq = filterQueries(solrQuery);
+        assertFalse(fq.contains("blocked:0"));
+        assertTrue(fq.contains("blocked:1"));
+        assertTrue(fq.contains("pageHost:example com"));
+    }
+
+    @Test
     void collapseOperatorInQueryAddsCollapseFilter() throws Exception {
         params.put("q", "cats collapse:imgDigest");
 
