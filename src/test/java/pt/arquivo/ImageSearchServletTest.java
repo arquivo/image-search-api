@@ -372,6 +372,42 @@ class ImageSearchServletTest {
                 solrQuery.getSorts());
     }
 
+    @Test
+    void sortOperatorWithSlashAppliesDivTransform() throws Exception {
+        params.put("q", "cats sort:imgWidth/imgHeight,asc");
+
+        SolrQuery solrQuery = runAndCaptureSolrQuery();
+
+        assertEquals("cats", solrQuery.getQuery());
+        assertEquals(
+                Arrays.asList(new SolrQuery.SortClause("div(imgWidth,imgHeight)", SolrQuery.ORDER.asc)),
+                solrQuery.getSorts());
+    }
+
+    @Test
+    void sortOperatorWithPlusAppliesSumTransform() throws Exception {
+        params.put("q", "cats sort:imgWidth+imgHeight,asc");
+
+        SolrQuery solrQuery = runAndCaptureSolrQuery();
+
+        assertEquals("cats", solrQuery.getQuery());
+        assertEquals(
+                Arrays.asList(new SolrQuery.SortClause("sum(imgWidth,imgHeight)", SolrQuery.ORDER.asc)),
+                solrQuery.getSorts());
+    }
+
+    @Test
+    void sortOperatorWithMinusAppliesSubTransform() throws Exception {
+        params.put("q", "cats sort:imgWidth-imgHeight,asc");
+
+        SolrQuery solrQuery = runAndCaptureSolrQuery();
+
+        assertEquals("cats", solrQuery.getQuery());
+        assertEquals(
+                Arrays.asList(new SolrQuery.SortClause("sub(imgWidth,imgHeight)", SolrQuery.ORDER.asc)),
+                solrQuery.getSorts());
+    }
+
     // ---------------------------------------------------------------
     // Response-mapping tests: assert what the API returns given a
     // mocked Solr response
