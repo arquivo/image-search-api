@@ -395,6 +395,29 @@ class ImageSearchServletTest {
     }
 
     @Test
+    void inlineSafeOffRemovesSafeFilterEntirely() throws Exception {
+        params.put("q", "cats safe:off");
+
+        SolrQuery solrQuery = runAndCaptureSolrQuery();
+
+        assertEquals("cats", solrQuery.getQuery());
+        assertFalse(filterQueries(solrQuery).stream().anyMatch(f -> f.startsWith("safe:")));
+    }
+
+    @Test
+    void inlineSafeOnLeavesExactlyOneSafeFilterNotDuplicated() throws Exception {
+        params.put("q", "cats safe:on");
+
+        SolrQuery solrQuery = runAndCaptureSolrQuery();
+
+        assertEquals("cats", solrQuery.getQuery());
+        List<String> safeFilters = filterQueries(solrQuery).stream()
+                .filter(f -> f.startsWith("safe:"))
+                .collect(java.util.stream.Collectors.toList());
+        assertEquals(Arrays.asList("safe:[0 TO 0.49]"), safeFilters);
+    }
+
+    @Test
     void collapseOperatorInQueryAddsCollapseFilter() throws Exception {
         params.put("q", "cats collapse:imgDigest");
 
