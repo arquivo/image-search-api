@@ -297,6 +297,63 @@ class ImageSearchServletTest {
         assertEquals("id,imgUrl,imgCrawlTimestamp,pageUrl,pageCrawlTimestamp,", solrQuery.get("fl"));
     }
 
+    @Test
+    void moreParamAppendsAdditionalFieldsToRequestedFl() throws Exception {
+        params.put("more", "pageHost,safe");
+
+        SolrQuery solrQuery = runAndCaptureSolrQuery();
+
+        String fl = solrQuery.get("fl");
+        assertTrue(fl.contains("pageHost,"));
+        assertTrue(fl.contains("safe,"));
+    }
+
+    @Test
+    void fqOperatorInQueryReplacesMatchingFilterAndAddsNew() throws Exception {
+        params.put("q", "cats fq:blocked:1");
+
+        SolrQuery solrQuery = runAndCaptureSolrQuery();
+
+        assertEquals("cats", solrQuery.getQuery());
+        List<String> fq = filterQueries(solrQuery);
+        assertFalse(fq.contains("blocked:0"));
+        assertTrue(fq.contains("blocked:1"));
+    }
+
+    @Test
+    void collapseOperatorInQueryAddsCollapseFilter() throws Exception {
+        params.put("q", "cats collapse:imgDigest");
+
+        SolrQuery solrQuery = runAndCaptureSolrQuery();
+
+        assertEquals("cats", solrQuery.getQuery());
+        assertTrue(filterQueries(solrQuery).contains("{!collapse field=imgDigest}"));
+    }
+
+    @Test
+    void sortOperatorWithCaretAppliesPowTransform() throws Exception {
+        params.put("q", "cats sort:imgWidth^2,desc");
+
+        SolrQuery solrQuery = runAndCaptureSolrQuery();
+
+        assertEquals("cats", solrQuery.getQuery());
+        assertEquals(
+                Arrays.asList(new SolrQuery.SortClause("pow(imgWidth,2)", SolrQuery.ORDER.desc)),
+                solrQuery.getSorts());
+    }
+
+    @Test
+    void sortOperatorWithAsteriskAppliesProductTransform() throws Exception {
+        params.put("q", "cats sort:imgWidth*imgHeight,asc");
+
+        SolrQuery solrQuery = runAndCaptureSolrQuery();
+
+        assertEquals("cats", solrQuery.getQuery());
+        assertEquals(
+                Arrays.asList(new SolrQuery.SortClause("product(imgWidth,imgHeight)", SolrQuery.ORDER.asc)),
+                solrQuery.getSorts());
+    }
+
     // ---------------------------------------------------------------
     // Response-mapping tests: assert what the API returns given a
     // mocked Solr response
@@ -355,6 +412,35 @@ class ImageSearchServletTest {
 
         // "safe" is not part of the default field list, so it must not appear unless requested
         assertFalse(item.has("safe"));
+    }
+
+    @Test
+    void moreParamAddsFieldsNotInDefaultFieldListToResponse() throws Exception {
+        params.put("more", "pageHost,safe");
+
+        SimpleDateFormat v1 = (SimpleDateFormat) APIVersionTranslator.V1_DATE_FORMAT.clone();
+        Date timestamp = v1.parse("20200115120000");
+
+        SolrDocumentList docs = new SolrDocumentList();
+        docs.add(sampleDocument(timestamp));
+        docs.setNumFound(1);
+        docs.setStart(0);
+        lenient().when(queryResponse.getResults()).thenReturn(docs);
+
+        JsonObject json = runAndParseJsonResponse();
+
+        JsonObject item = json.getAsJsonArray("responseItems").get(0).getAsJsonObject();
+        assertEquals("example.com", item.get("pageHost").getAsString());
+        assertEquals(0.9f, item.get("safe").getAsFloat(), 0.0001f);
+    }
+
+    @Test
+    void prettyPrintTrueProducesIndentedJson() throws Exception {
+        params.put("prettyPrint", "true");
+
+        runAndCaptureSolrQuery();
+
+        assertTrue(responseBody.toString().contains("{\n"));
     }
 
     @Test
