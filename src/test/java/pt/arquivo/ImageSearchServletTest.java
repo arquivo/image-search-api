@@ -395,6 +395,28 @@ class ImageSearchServletTest {
     }
 
     @Test
+    void allInlineOperatorsCombinedInASingleQueryAreAllParsedCorrectly() throws Exception {
+        params.put("q", "cats site:example.com type:png safe:off size:sm sort:imgCrawlTimestamp,desc "
+                + "fq:collection:foo collapse:imgDigest");
+
+        SolrQuery solrQuery = runAndCaptureSolrQuery();
+
+        assertEquals("cats", solrQuery.getQuery());
+
+        List<String> fq = filterQueries(solrQuery);
+        assertTrue(fq.contains("pageHost:example.com"));
+        assertTrue(fq.contains("imgMimeType: image/png"));
+        assertTrue(fq.contains("{!frange u=65536 }product(imgHeight,imgWidth)"));
+        assertFalse(fq.stream().anyMatch(f -> f.startsWith("safe:")));
+        assertTrue(fq.contains("collection:foo"));
+        assertTrue(fq.contains("{!collapse field=imgDigest}"));
+
+        assertEquals(
+                Arrays.asList(new SolrQuery.SortClause("imgCrawlTimestamp", SolrQuery.ORDER.desc)),
+                solrQuery.getSorts());
+    }
+
+    @Test
     void inlineSafeOffRemovesSafeFilterEntirely() throws Exception {
         params.put("q", "cats safe:off");
 
