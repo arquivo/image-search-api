@@ -22,7 +22,9 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -162,6 +164,46 @@ class ImageSearchServletTest {
 
         assertTrue(filterQueries(solrQuery).contains(
                 "imgCrawlTimestamp:[" + expectedFrom + " TO " + expectedTo + "]"));
+    }
+
+    @Test
+    void onlyFromDateDefaultsToEndOfCurrentYear() throws Exception {
+        params.put("from", "20200115120000");
+
+        SolrQuery solrQuery = runAndCaptureSolrQuery();
+
+        SimpleDateFormat v1 = (SimpleDateFormat) APIVersionTranslator.V1_DATE_FORMAT.clone();
+        SimpleDateFormat v2 = (SimpleDateFormat) APIVersionTranslator.V2_DATE_FORMAT.clone();
+        String expectedFrom = v2.format(v1.parse("20200115120000"));
+
+        assertTrue(filterQueries(solrQuery).contains(
+                "imgCrawlTimestamp:[" + expectedFrom + " TO " + endOfCurrentYearV2() + "]"));
+    }
+
+    @Test
+    void onlyToDateDefaultsFromToNineteenNinetySix() throws Exception {
+        params.put("to", "20211231235959");
+
+        SolrQuery solrQuery = runAndCaptureSolrQuery();
+
+        SimpleDateFormat v1 = (SimpleDateFormat) APIVersionTranslator.V1_DATE_FORMAT.clone();
+        SimpleDateFormat v2 = (SimpleDateFormat) APIVersionTranslator.V2_DATE_FORMAT.clone();
+        String expectedTo = v2.format(v1.parse("20211231235959"));
+
+        assertTrue(filterQueries(solrQuery).contains(
+                "imgCrawlTimestamp:[1996-01-01T00:00:00Z TO " + expectedTo + "]"));
+    }
+
+    private static String endOfCurrentYearV2() {
+        Calendar endOfYear = new GregorianCalendar();
+        endOfYear.set(Calendar.MONTH, Calendar.DECEMBER);
+        endOfYear.set(Calendar.DAY_OF_MONTH, 31);
+        endOfYear.set(Calendar.HOUR_OF_DAY, 23);
+        endOfYear.set(Calendar.MINUTE, 59);
+        endOfYear.set(Calendar.SECOND, 59);
+        endOfYear.set(Calendar.MILLISECOND, 0);
+        SimpleDateFormat v2 = (SimpleDateFormat) APIVersionTranslator.V2_DATE_FORMAT.clone();
+        return v2.format(endOfYear.getTime());
     }
 
     @Test

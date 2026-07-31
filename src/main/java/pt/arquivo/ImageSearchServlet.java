@@ -491,52 +491,47 @@ public class ImageSearchServlet extends HttpServlet {
         SimpleDateFormat V1_DATE_FORMAT = (SimpleDateFormat) APIVersionTranslator.V1_DATE_FORMAT.clone();
         SimpleDateFormat V2_DATE_FORMAT = (SimpleDateFormat) APIVersionTranslator.V2_DATE_FORMAT.clone();
 
-        /*
-        if (dateStart == null || dateStart.length() == 0) {
-            dateStart = "1996-01-01T00:00:00Z";
-            //dateStart = FORMAT_OUT.format( dateStart );
-        }
-
-        if (dateEnd == null || dateEnd.length() == 0) {
-            Calendar dateEND = currentDate();
-            dateEnd = V2_DATE_FORMAT.format(dateEND.getTime());
-        }
-        */
-
         if (dateStart == null && dateEnd == null)
             return;
 
-        if (dateStart != null && dateEnd != null) { //Logic to accept pages with yyyy and yyyyMMddHHmmss format
+        // When only one bound is given, default the other so we don't build a filter with a raw "null".
+        if (dateStart == null || dateStart.isEmpty()) {
+            dateStart = "1996-01-01T00:00:00Z";
+        }
 
-            try {
-                V2_DATE_FORMAT.setLenient(false);
-                DateFormat dOutputFormatYear = new SimpleDateFormat("yyyy");
-                dOutputFormatYear.setLenient(false);
-                if (tryParse(V1_DATE_FORMAT, dateStart)) {
-                    Date dStart = V1_DATE_FORMAT.parse(dateStart);
-                    dateStart = V2_DATE_FORMAT.format(dStart.getTime());
-                } else if (tryParse(V1_DATE_FORMAT, dateStart + "0101000000")) {
-                    Date dStart = V1_DATE_FORMAT.parse(dateStart + "0101000000");
-                    dateStart = V2_DATE_FORMAT.format(dStart.getTime());
-                } else {
-                    dateStart = "1996-01-01T00:00:00Z";
-                }
+        if (dateEnd == null || dateEnd.isEmpty()) {
+            dateEnd = V2_DATE_FORMAT.format(currentDate().getTime());
+        }
 
-                if (tryParse(V1_DATE_FORMAT, dateEnd)) {
-                    Date dEnd = V1_DATE_FORMAT.parse(dateEnd);
-                    dateEnd = V2_DATE_FORMAT.format(dEnd.getTime());
-                } else if (tryParse(V1_DATE_FORMAT, dateEnd + "1231235959")) {
-                    Date dEnd = V1_DATE_FORMAT.parse(dateEnd + "1231235959");
-                    dateEnd = V2_DATE_FORMAT.format(dEnd.getTime());
-                } else {
-                    Calendar dateEND = currentDate();
-                    dateEnd = V2_DATE_FORMAT.format(dateEND.getTime());
-                }
-            } catch (ParseException e) {
-                LOG.error("Parse Exception: ", e);
-            } catch (IndexOutOfBoundsException e) {
-                LOG.error("Parse Exception: ", e);
+        //Logic to accept pages with yyyy and yyyyMMddHHmmss format
+        try {
+            V2_DATE_FORMAT.setLenient(false);
+            DateFormat dOutputFormatYear = new SimpleDateFormat("yyyy");
+            dOutputFormatYear.setLenient(false);
+            if (tryParse(V1_DATE_FORMAT, dateStart)) {
+                Date dStart = V1_DATE_FORMAT.parse(dateStart);
+                dateStart = V2_DATE_FORMAT.format(dStart.getTime());
+            } else if (tryParse(V1_DATE_FORMAT, dateStart + "0101000000")) {
+                Date dStart = V1_DATE_FORMAT.parse(dateStart + "0101000000");
+                dateStart = V2_DATE_FORMAT.format(dStart.getTime());
+            } else {
+                dateStart = "1996-01-01T00:00:00Z";
             }
+
+            if (tryParse(V1_DATE_FORMAT, dateEnd)) {
+                Date dEnd = V1_DATE_FORMAT.parse(dateEnd);
+                dateEnd = V2_DATE_FORMAT.format(dEnd.getTime());
+            } else if (tryParse(V1_DATE_FORMAT, dateEnd + "1231235959")) {
+                Date dEnd = V1_DATE_FORMAT.parse(dateEnd + "1231235959");
+                dateEnd = V2_DATE_FORMAT.format(dEnd.getTime());
+            } else {
+                Calendar dateEND = currentDate();
+                dateEnd = V2_DATE_FORMAT.format(dateEND.getTime());
+            }
+        } catch (ParseException e) {
+            LOG.error("Parse Exception: ", e);
+        } catch (IndexOutOfBoundsException e) {
+            LOG.error("Parse Exception: ", e);
         }
         fqStrings.add(V2_IMAGETSTAMP + ":[" + dateStart + " TO " + dateEnd + "]");
     }
