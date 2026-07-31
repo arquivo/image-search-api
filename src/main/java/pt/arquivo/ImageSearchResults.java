@@ -10,7 +10,7 @@ import org.apache.solr.common.SolrDocumentList;
 
 
 public class ImageSearchResults {
-    private SimpleDateFormat V1_DATE_FORMAT;
+    private transient SimpleDateFormat V1_DATE_FORMAT;
 
     String serviceName = "Arquivo.pt - image search service.";
     String linkToService = ImageSearchProperties.get("linkToService");

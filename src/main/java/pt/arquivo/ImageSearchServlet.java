@@ -89,6 +89,11 @@ public class ImageSearchServlet extends HttpServlet {
 
     }
 
+    // Package-private seam so tests can inject a mock SolrClient without going through init(ServletConfig).
+    void setSolrClient(SolrClient solr) {
+        this.solr = solr;
+    }
+
 
     /**
      * HttpServlet doGet method
