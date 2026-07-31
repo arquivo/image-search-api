@@ -78,6 +78,9 @@ public class ImageSearchServlet extends HttpServlet {
             LOG.debug("[init] Null waybackHost parameter in Web.xml");
         }
         if (solrHost == null) {
+            // Unlike solrCollection below, a null solrHost isn't validated here - it just
+            // logs and falls through, causing an unhandled NullPointerException in
+            // createSolr() (solrHost.contains(",")) instead of a clear ServletException.
             LOG.debug("[init] Null solrHost parameter in Web.xml");
         }
         if (solrCollection == null) {
