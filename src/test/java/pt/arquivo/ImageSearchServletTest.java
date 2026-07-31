@@ -684,6 +684,27 @@ class ImageSearchServletTest {
     }
 
     @Test
+    void generatedUrlsIncludeNonDefaultHttpPort() throws Exception {
+        lenient().when(request.getServerPort()).thenReturn(8983);
+
+        JsonObject json = runAndParseJsonResponse();
+
+        assertTrue(json.get("linkToMoreFields").getAsString().startsWith("http://localhost:8983/imagesearch"));
+    }
+
+    @Test
+    void generatedUrlsOmitDefaultHttpsPort() throws Exception {
+        lenient().when(request.getScheme()).thenReturn("https");
+        lenient().when(request.getServerPort()).thenReturn(443);
+
+        JsonObject json = runAndParseJsonResponse();
+
+        String linkToMoreFields = json.get("linkToMoreFields").getAsString();
+        assertTrue(linkToMoreFields.startsWith("https://localhost/imagesearch"));
+        assertFalse(linkToMoreFields.contains(":443"));
+    }
+
+    @Test
     void debugModeWrapsResponseWithResponseHeader() throws Exception {
         params.put("debug", "on");
 
