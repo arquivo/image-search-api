@@ -16,6 +16,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import javax.servlet.ServletConfig;
+import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.PrintWriter;
@@ -29,8 +31,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -91,6 +95,36 @@ class ImageSearchServletTest {
 
     private static List<String> filterQueries(SolrQuery solrQuery) {
         return Arrays.asList(solrQuery.getFilterQueries());
+    }
+
+    // ---------------------------------------------------------------
+    // init(ServletConfig) tests
+    // ---------------------------------------------------------------
+
+    private static ServletConfig servletConfigWith(String waybackHost, String solrServer, String solrCollection) {
+        ServletConfig config = org.mockito.Mockito.mock(ServletConfig.class);
+        lenient().when(config.getInitParameter("waybackHost")).thenReturn(waybackHost);
+        lenient().when(config.getInitParameter("solrServer")).thenReturn(solrServer);
+        lenient().when(config.getInitParameter("solrCollection")).thenReturn(solrCollection);
+        return config;
+    }
+
+    @Test
+    void initThrowsServletExceptionWhenSolrCollectionIsMissing() {
+        ServletConfig config = servletConfigWith("https://wayback.example.com/", "http://solr.example.com/solr/", null);
+
+        ImageSearchServlet freshServlet = new ImageSearchServlet();
+        assertThrows(ServletException.class, () -> freshServlet.init(config));
+    }
+
+    @Test
+    void initDoesNotThrowWhenWaybackHostIsMissing() {
+        // Only waybackHost is truly optional here: it's only used for LOG.debug.
+        // solrServer being null would NPE inside createSolr(), so it's deliberately left set.
+        ServletConfig config = servletConfigWith(null, "http://solr.example.com/solr/", "imagesearch");
+
+        ImageSearchServlet freshServlet = new ImageSearchServlet();
+        assertDoesNotThrow(() -> freshServlet.init(config));
     }
 
     // ---------------------------------------------------------------
