@@ -520,6 +520,25 @@ class ImageSearchServletTest {
     }
 
     @Test
+    void prettyPrintTrueAlsoAddsLinkToDocumentation() throws Exception {
+        // ImageSearchServlet reuses the prettyPrint flag as the ImageSearchResults "documentation" flag,
+        // so turning on pretty printing also (perhaps unintentionally) surfaces this link.
+        params.put("prettyPrint", "true");
+
+        JsonObject json = runAndParseJsonResponse();
+
+        assertEquals("https://github.com/arquivo/pwa-technologies/wiki/ImageSearch-API-v1.1-(beta)",
+                json.get("linkToDocumentation").getAsString());
+    }
+
+    @Test
+    void prettyPrintAbsentOmitsLinkToDocumentation() throws Exception {
+        JsonObject json = runAndParseJsonResponse();
+
+        assertFalse(json.has("linkToDocumentation"));
+    }
+
+    @Test
     void fieldsParamRestrictsReturnedItemFieldsToRequestedOnes() throws Exception {
         params.put("fields", "imgSrc");
 
