@@ -151,6 +151,24 @@ class ImageSearchServletTest {
     }
 
     @Test
+    void nonNumericMaxItemsFallsBackToDefault() throws Exception {
+        params.put("maxItems", "abc");
+
+        SolrQuery solrQuery = runAndCaptureSolrQuery();
+
+        assertEquals(Integer.valueOf(50), solrQuery.getRows());
+    }
+
+    @Test
+    void nonNumericOffsetFallsBackToDefault() throws Exception {
+        params.put("offset", "abc");
+
+        SolrQuery solrQuery = runAndCaptureSolrQuery();
+
+        assertEquals(Integer.valueOf(0), solrQuery.getStart());
+    }
+
+    @Test
     void dateRangeFilterUsesTranslatedV2Dates() throws Exception {
         params.put("from", "20200115120000");
         params.put("to", "20211231235959");
