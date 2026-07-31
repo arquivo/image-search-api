@@ -589,6 +589,55 @@ class ImageSearchServletTest {
     }
 
     @Test
+    void pagingOffsetsAreComputedFromStartLimitAndNumFound() throws Exception {
+        params.put("offset", "30");
+        params.put("maxItems", "10");
+        lenient().when(request.getQueryString()).thenReturn("offset=30&maxItems=10");
+
+        SolrDocumentList docs = new SolrDocumentList();
+        docs.setNumFound(50);
+        docs.setStart(30);
+        lenient().when(queryResponse.getResults()).thenReturn(docs);
+
+        JsonObject json = runAndParseJsonResponse();
+
+        assertTrue(json.get("nextPage").getAsString().endsWith("&offset=40"));
+        assertTrue(json.get("previousPage").getAsString().endsWith("&offset=20"));
+    }
+
+    @Test
+    void previousPageOffsetIsClampedToZeroAtStartOfResults() throws Exception {
+        params.put("offset", "0");
+        params.put("maxItems", "10");
+        lenient().when(request.getQueryString()).thenReturn("offset=0&maxItems=10");
+
+        SolrDocumentList docs = new SolrDocumentList();
+        docs.setNumFound(50);
+        docs.setStart(0);
+        lenient().when(queryResponse.getResults()).thenReturn(docs);
+
+        JsonObject json = runAndParseJsonResponse();
+
+        assertTrue(json.get("previousPage").getAsString().endsWith("&offset=0"));
+    }
+
+    @Test
+    void nextPageOffsetIsClampedToNumFoundOnLastPage() throws Exception {
+        params.put("offset", "45");
+        params.put("maxItems", "10");
+        lenient().when(request.getQueryString()).thenReturn("offset=45&maxItems=10");
+
+        SolrDocumentList docs = new SolrDocumentList();
+        docs.setNumFound(50);
+        docs.setStart(45);
+        lenient().when(queryResponse.getResults()).thenReturn(docs);
+
+        JsonObject json = runAndParseJsonResponse();
+
+        assertTrue(json.get("nextPage").getAsString().endsWith("&offset=50"));
+    }
+
+    @Test
     void debugModeWrapsResponseWithResponseHeader() throws Exception {
         params.put("debug", "on");
 
