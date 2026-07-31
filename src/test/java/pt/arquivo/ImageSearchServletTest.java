@@ -430,6 +430,20 @@ class ImageSearchServletTest {
                 solrQuery.getSorts());
     }
 
+    @Test
+    void sortOperatorWithMultipleSemicolonSeparatedInstancesAppliesEachClause() throws Exception {
+        params.put("q", "cats sort:imgCrawlTimestamp,desc;imgWidth,asc");
+
+        SolrQuery solrQuery = runAndCaptureSolrQuery();
+
+        assertEquals("cats", solrQuery.getQuery());
+        assertEquals(
+                Arrays.asList(
+                        new SolrQuery.SortClause("imgCrawlTimestamp", SolrQuery.ORDER.desc),
+                        new SolrQuery.SortClause("imgWidth", SolrQuery.ORDER.asc)),
+                solrQuery.getSorts());
+    }
+
     // ---------------------------------------------------------------
     // Response-mapping tests: assert what the API returns given a
     // mocked Solr response
