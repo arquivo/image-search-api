@@ -638,6 +638,18 @@ class ImageSearchServletTest {
     }
 
     @Test
+    void linkToMoreFieldsReplacesExistingMoreQueryParamWithCanonicalFieldList() throws Exception {
+        params.put("q", "cats");
+        params.put("more", "foo");
+        lenient().when(request.getQueryString()).thenReturn("q=cats&more=foo");
+
+        JsonObject json = runAndParseJsonResponse();
+
+        String linkToMoreFields = json.get("linkToMoreFields").getAsString();
+        assertEquals("http://localhost/imagesearch?q=cats&more=pageHost,matchingImages,safe", linkToMoreFields);
+    }
+
+    @Test
     void debugModeWrapsResponseWithResponseHeader() throws Exception {
         params.put("debug", "on");
 
