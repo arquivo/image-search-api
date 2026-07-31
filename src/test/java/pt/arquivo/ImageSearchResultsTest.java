@@ -86,6 +86,25 @@ class ImageSearchResultsTest {
     }
 
     @Test
+    void allDocumentsInResponseItemsAreMappedIndependently() {
+        SolrDocument doc1 = new SolrDocument();
+        doc1.addField("safe", 0.2f);
+
+        SolrDocument doc2 = new SolrDocument();
+        doc2.addField("safe", 0.6f);
+
+        SolrDocumentList docs = new SolrDocumentList();
+        docs.add(doc1);
+        docs.add(doc2);
+
+        ImageSearchResults results = build(new String[]{"safe"}, 2, 2, docs);
+
+        assertEquals(2, results.responseItems.size());
+        assertEquals(0.8f, (float) results.responseItems.get(0).getFieldValue("safe"), 0.0001f);
+        assertEquals(0.4f, (float) results.responseItems.get(1).getFieldValue("safe"), 0.0001f);
+    }
+
+    @Test
     void imgLinkToArchiveIsBuiltWhenBothFieldsPresent() throws Exception {
         SimpleDateFormat v1 = (SimpleDateFormat) APIVersionTranslator.V1_DATE_FORMAT.clone();
         Date timestamp = v1.parse("20200115120000");
