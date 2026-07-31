@@ -450,16 +450,18 @@ public class ImageSearchServlet extends HttpServlet {
         if (siteSearch != null) {
             StringBuilder domainsFilter = new StringBuilder();
             for (String domainUnescaped : siteSearch.split(",")) {
-                String domain = ClientUtils.escapeQueryChars(domainUnescaped);
-                // unescape *, as it is needed to match all subdomains
-                // https://github.com/arquivo/pwa-technologies/issues/1014
-                // https://github.com/arquivo/pwa-technologies/issues/987
-                domain = domain.replace("\\*", "*");
-                if (!domain.isEmpty()) {
+                // normalize: strip www. so both www.foo.pt and foo.pt match the same results
+                // https://github.com/arquivo/pwa-technologies/issues/1481
+                String domainBase = domainUnescaped.startsWith("www.")
+                        ? domainUnescaped.substring(4)
+                        : domainUnescaped;
+                String domainBaseEscaped = ClientUtils.escapeQueryChars(domainBase).replace("\\*", "*");
+                String domainWwwEscaped = ClientUtils.escapeQueryChars("www." + domainBase).replace("\\*", "*");
+                if (!domainBaseEscaped.isEmpty()) {
                     if (domainsFilter.length() != 0)
                         domainsFilter.append(" OR ");
-                    domainsFilter.append("pageHost:");
-                    domainsFilter.append(domain);
+                    domainsFilter.append("(pageHost:").append(domainBaseEscaped)
+                                 .append(" OR pageHost:").append(domainWwwEscaped).append(")");
                 }
             }
             // Only add a filter if we actually built one; otherwise siteSearch="" (or ",") would
@@ -502,6 +504,7 @@ public class ImageSearchServlet extends HttpServlet {
             return;
 
         // When only one bound is given, default the other so we don't build a filter with a raw "null".
+        // https://github.com/arquivo/pwa-technologies/issues/1561
         if (dateStart == null || dateStart.isEmpty()) {
             dateStart = "1996-01-01T00:00:00Z";
         }

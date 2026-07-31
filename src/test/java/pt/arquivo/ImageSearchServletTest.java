@@ -309,7 +309,7 @@ class ImageSearchServletTest {
 
         SolrQuery solrQuery = runAndCaptureSolrQuery();
 
-        assertTrue(filterQueries(solrQuery).contains("pageHost:example.com"));
+        assertTrue(filterQueries(solrQuery).contains("(pageHost:example.com OR pageHost:www.example.com)"));
     }
 
     @Test
@@ -339,7 +339,7 @@ class ImageSearchServletTest {
         assertEquals("cats", solrQuery.getQuery());
 
         List<String> fq = filterQueries(solrQuery);
-        assertTrue(fq.contains("pageHost:example.com"));
+        assertTrue(fq.contains("(pageHost:example.com OR pageHost:www.example.com)"));
         assertTrue(fq.contains("imgMimeType: image/png"));
         assertTrue(fq.contains("{!frange u=65536 }product(imgHeight,imgWidth)"));
         assertFalse(fq.stream().anyMatch(f -> f.startsWith("safe:")));
@@ -404,7 +404,7 @@ class ImageSearchServletTest {
         assertEquals("cats", solrQuery.getQuery());
 
         List<String> fq = filterQueries(solrQuery);
-        assertTrue(fq.contains("pageHost:example.com"));
+        assertTrue(fq.contains("(pageHost:example.com OR pageHost:www.example.com)"));
         assertTrue(fq.contains("imgMimeType: image/png"));
         assertTrue(fq.contains("{!frange u=65536 }product(imgHeight,imgWidth)"));
         assertFalse(fq.stream().anyMatch(f -> f.startsWith("safe:")));
