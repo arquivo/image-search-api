@@ -78,6 +78,9 @@ public class ImageSearchServlet extends HttpServlet {
             LOG.debug("[init] Null waybackHost parameter in Web.xml");
         }
         if (solrHost == null) {
+            // Unlike solrCollection below, a null solrHost isn't validated here - it just
+            // logs and falls through, causing an unhandled NullPointerException in
+            // createSolr() (solrHost.contains(",")) instead of a clear ServletException.
             LOG.debug("[init] Null solrHost parameter in Web.xml");
         }
         if (solrCollection == null) {
@@ -87,6 +90,11 @@ public class ImageSearchServlet extends HttpServlet {
 
         solr = createSolr(solrHost, solrCollection);
 
+    }
+
+    // Package-private seam so tests can inject a mock SolrClient without going through init(ServletConfig).
+    void setSolrClient(SolrClient solr) {
+        this.solr = solr;
     }
 
 
@@ -456,7 +464,11 @@ public class ImageSearchServlet extends HttpServlet {
                                  .append(" OR pageHost:").append(domainWwwEscaped).append(")");
                 }
             }
-            fqStrings.add(domainsFilter.toString());
+            // Only add a filter if we actually built one; otherwise siteSearch="" (or ",") would
+            // add an empty fq string to the Solr query.
+            if (domainsFilter.length() != 0) {
+                fqStrings.add(domainsFilter.toString());
+            }
         }
     }
 
@@ -491,44 +503,45 @@ public class ImageSearchServlet extends HttpServlet {
         if (dateStart == null && dateEnd == null)
             return;
 
-        // default the missing bound so a partial date filter doesn't crash Solr with "Invalid Date String:'null'"
+        // When only one bound is given, default the other so we don't build a filter with a raw "null".
         // https://github.com/arquivo/pwa-technologies/issues/1561
-        if (dateStart == null || dateStart.isEmpty())
+        if (dateStart == null || dateStart.isEmpty()) {
             dateStart = "1996-01-01T00:00:00Z";
-        if (dateEnd == null || dateEnd.isEmpty())
+        }
+
+        if (dateEnd == null || dateEnd.isEmpty()) {
             dateEnd = V2_DATE_FORMAT.format(currentDate().getTime());
+        }
 
-        if (dateStart != null && dateEnd != null) { //Logic to accept pages with yyyy and yyyyMMddHHmmss format
-
-            try {
-                V2_DATE_FORMAT.setLenient(false);
-                DateFormat dOutputFormatYear = new SimpleDateFormat("yyyy");
-                dOutputFormatYear.setLenient(false);
-                if (tryParse(V1_DATE_FORMAT, dateStart)) {
-                    Date dStart = V1_DATE_FORMAT.parse(dateStart);
-                    dateStart = V2_DATE_FORMAT.format(dStart.getTime());
-                } else if (tryParse(V1_DATE_FORMAT, dateStart + "0101000000")) {
-                    Date dStart = V1_DATE_FORMAT.parse(dateStart + "0101000000");
-                    dateStart = V2_DATE_FORMAT.format(dStart.getTime());
-                } else {
-                    dateStart = "1996-01-01T00:00:00Z";
-                }
-
-                if (tryParse(V1_DATE_FORMAT, dateEnd)) {
-                    Date dEnd = V1_DATE_FORMAT.parse(dateEnd);
-                    dateEnd = V2_DATE_FORMAT.format(dEnd.getTime());
-                } else if (tryParse(V1_DATE_FORMAT, dateEnd + "1231235959")) {
-                    Date dEnd = V1_DATE_FORMAT.parse(dateEnd + "1231235959");
-                    dateEnd = V2_DATE_FORMAT.format(dEnd.getTime());
-                } else {
-                    Calendar dateEND = currentDate();
-                    dateEnd = V2_DATE_FORMAT.format(dateEND.getTime());
-                }
-            } catch (ParseException e) {
-                LOG.error("Parse Exception: ", e);
-            } catch (IndexOutOfBoundsException e) {
-                LOG.error("Parse Exception: ", e);
+        //Logic to accept pages with yyyy and yyyyMMddHHmmss format
+        try {
+            V2_DATE_FORMAT.setLenient(false);
+            DateFormat dOutputFormatYear = new SimpleDateFormat("yyyy");
+            dOutputFormatYear.setLenient(false);
+            if (tryParse(V1_DATE_FORMAT, dateStart)) {
+                Date dStart = V1_DATE_FORMAT.parse(dateStart);
+                dateStart = V2_DATE_FORMAT.format(dStart.getTime());
+            } else if (tryParse(V1_DATE_FORMAT, dateStart + "0101000000")) {
+                Date dStart = V1_DATE_FORMAT.parse(dateStart + "0101000000");
+                dateStart = V2_DATE_FORMAT.format(dStart.getTime());
+            } else {
+                dateStart = "1996-01-01T00:00:00Z";
             }
+
+            if (tryParse(V1_DATE_FORMAT, dateEnd)) {
+                Date dEnd = V1_DATE_FORMAT.parse(dateEnd);
+                dateEnd = V2_DATE_FORMAT.format(dEnd.getTime());
+            } else if (tryParse(V1_DATE_FORMAT, dateEnd + "1231235959")) {
+                Date dEnd = V1_DATE_FORMAT.parse(dateEnd + "1231235959");
+                dateEnd = V2_DATE_FORMAT.format(dEnd.getTime());
+            } else {
+                Calendar dateEND = currentDate();
+                dateEnd = V2_DATE_FORMAT.format(dateEND.getTime());
+            }
+        } catch (ParseException e) {
+            LOG.error("Parse Exception: ", e);
+        } catch (IndexOutOfBoundsException e) {
+            LOG.error("Parse Exception: ", e);
         }
         fqStrings.add(V2_IMAGETSTAMP + ":[" + dateStart + " TO " + dateEnd + "]");
     }

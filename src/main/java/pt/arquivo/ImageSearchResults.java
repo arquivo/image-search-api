@@ -10,7 +10,7 @@ import org.apache.solr.common.SolrDocumentList;
 
 
 public class ImageSearchResults {
-    private SimpleDateFormat V1_DATE_FORMAT;
+    private transient SimpleDateFormat V1_DATE_FORMAT;
 
     String serviceName = "Arquivo.pt - image search service.";
     String linkToService = ImageSearchProperties.get("linkToService");
@@ -88,17 +88,24 @@ public class ImageSearchResults {
             String V1_IMAGELINKTOARCHIVE = APIVersionTranslator.v2Tov1(V2_IMAGELINKTOARCHIVE);
 
             if (isRequestedField(requestedFields,V1_IMAGELINKTOARCHIVE)) {
-                String tstamp = this.V1_DATE_FORMAT.format(current.getFieldValue(V2_IMAGETSTAMP));
-                String url = current.getFieldValue(V2_IMAGEURL).toString();
-                newDocument.addField(V1_IMAGELINKTOARCHIVE, V2_WAYBACKADDRESS + tstamp + "im_/" + url);
+                Object imgTimestamp = current.getFieldValue(V2_IMAGETSTAMP);
+                Object imgUrl = current.getFieldValue(V2_IMAGEURL);
+                // Skip the link rather than crash when the underlying doc lacks the fields it's built from.
+                if (imgTimestamp != null && imgUrl != null) {
+                    String tstamp = this.V1_DATE_FORMAT.format(imgTimestamp);
+                    newDocument.addField(V1_IMAGELINKTOARCHIVE, V2_WAYBACKADDRESS + tstamp + "im_/" + imgUrl);
+                }
             }
 
             String V1_PAGELINKTOARCHIVE = APIVersionTranslator.v2Tov1(V2_PAGELINKTOARCHIVE);
 
             if (isRequestedField(requestedFields, V1_PAGELINKTOARCHIVE)) {
-                String tstamp = this.V1_DATE_FORMAT.format(current.getFieldValue(V2_PAGETSTAMP));
-                String url = current.getFieldValue(V2_PAGEURL).toString();
-                newDocument.addField(V1_PAGELINKTOARCHIVE, V2_WAYBACKADDRESS + tstamp + "/" + url);
+                Object pageTimestamp = current.getFieldValue(V2_PAGETSTAMP);
+                Object pageUrl = current.getFieldValue(V2_PAGEURL);
+                if (pageTimestamp != null && pageUrl != null) {
+                    String tstamp = this.V1_DATE_FORMAT.format(pageTimestamp);
+                    newDocument.addField(V1_PAGELINKTOARCHIVE, V2_WAYBACKADDRESS + tstamp + "/" + pageUrl);
+                }
             }
 
             processedDocs.add(newDocument);
