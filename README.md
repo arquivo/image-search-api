@@ -3,10 +3,20 @@ Web app that acts as an API proxy of Apache Solr taht contains web archived imag
 
 ## Build
 
-It produces a war file to be run on a Java servlet web server like Apache Tomcat.
+It produces a self-executable war file with an embedded Tomcat.
 
 ```bash
-mvn clean verify
+mvn clean package
+java -jar target/image-search-api.war
+```
+
+## Docker
+
+A `Dockerfile` is provided to build and run the app in a container:
+
+```bash
+docker build -t image-search-api .
+docker run -p 8080:8080 image-search-api
 ```
 
 ## Development
@@ -16,11 +26,11 @@ To make development more rapid there is a docker-compose.yml file that runs the 
 Example run
 
 ```bash
-mvn clean verify && docker-compose up
+docker-compose up --build
 ```
 
 Example with custom solr server:
 
 ```bash
-mvn clean verify -Dsolr.url=p51.arquivo.pt && docker-compose up
+docker-compose build --build-arg SOLR_SERVER=p51.arquivo.pt && docker-compose up
 ```

@@ -13,8 +13,10 @@
 		<maven.compiler.source>1.8</maven.compiler.source>
 		<maven.compiler.target>1.8</maven.compiler.target>
 
+		<spring-boot.version>2.7.18</spring-boot.version>
+
 		<solr.server>p44.arquivo.pt</solr.server>
-		<broker.image.search.solr.server>http://${solr.server}:8983/solr/</broker.image.search.solr.server>
+		<broker.image.search.solr.server>http://${solr.server}:3200/solr/</broker.image.search.solr.server>
 		<broker.image.search.solr.collection>images</broker.image.search.solr.collection>
 		<wayback.server>preprod.arquivo.pt/wayback</wayback.server>
 	</properties>
@@ -32,7 +34,7 @@
 		<dependency>
 			<groupId>javax.servlet</groupId>
 			<artifactId>javax.servlet-api</artifactId>
-			<version>3.1.0</version>
+			<version>4.0.1</version>
 			<scope>provided</scope>
 		</dependency>
 		<dependency>
@@ -44,6 +46,33 @@
 			<groupId>org.apache.solr</groupId>
 			<artifactId>solr-solrj</artifactId>
 			<version>8.7.0</version>
+		</dependency>
+		<!-- Embedded Tomcat: makes the packaged war self-executable via `java -jar`.
+		     spring-web (not spring-boot-starter-web) is used deliberately - it provides
+		     WebApplicationInitializer without pulling in spring-webmvc, so Spring Boot
+		     doesn't auto-register a DispatcherServlet that would conflict with the
+		     ImageSearchServlet registration in ImageSearchApplication. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter</artifactId>
+			<version>${spring-boot.version}</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.springframework.boot</groupId>
+					<artifactId>spring-boot-starter-logging</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-web</artifactId>
+			<version>5.3.31</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-tomcat</artifactId>
+			<version>${spring-boot.version}</version>
+			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>
@@ -68,6 +97,20 @@
 		<!-- Change war name -->
 		<finalName>${project.artifactId}</finalName>
 
+		<resources>
+			<resource>
+				<directory>src/main/resources</directory>
+			</resource>
+			<!-- Replace maven properties on servlet.properties file -->
+			<resource>
+				<filtering>true</filtering>
+				<directory>src/main/resources</directory>
+				<includes>
+					<include>servlet.properties</include>
+				</includes>
+			</resource>
+		</resources>
+
 		<plugins>
 			<!-- Replace maven properties on web.xml file -->
 			<plugin>
@@ -85,6 +128,18 @@
 						</resource>
 					</webResources>
 				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+				<version>${spring-boot.version}</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>repackage</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
