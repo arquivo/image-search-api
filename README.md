@@ -55,11 +55,19 @@ docker run -p 8080:8080 --memory=4g \
   image-search-api
 ```
 
-### Concurrency limit: Tomcat's thread pool
+### Concurrency limit: Tomcat's connection and thread pool
 
-Independently of container memory, Spring Boot's embedded Tomcat caps concurrent request processing with its own defaults, unmodified in this project: `server.tomcat.threads.max=200` (max worker threads) and `server.tomcat.accept-count=100` (extra connections queued once all 200 threads are busy, beyond which new connections are refused). This is the actual backstop against unbounded traffic spikes — raising the memory limit alone doesn't increase how many requests can be served concurrently, it only gives the JVM more room to run at the existing 200-thread ceiling.
+Independently of container memory, Spring Boot's embedded Tomcat (9.0.x, via the 2.7.18 parent) caps concurrent traffic with three unmodified defaults that stack on top of each other, not one:
 
-To raise the ceiling, pass the equivalent Spring Boot properties as JVM system properties in `JAVA_OPTS` (or as `SERVER_TOMCAT_THREADS_MAX/SERVER_TOMCAT_ACCEPT_COUNT` environment variables, via Spring's relaxed env binding):
+| Property | Default | What it actually limits |
+|---|---|---|
+| `server.tomcat.threads.max` | 200 | Worker threads — how many requests can be **actively processed** at once. This is the real backstop, since every other layer is just waiting on this one. |
+| `server.tomcat.max-connections` | 8192 | Open sockets Tomcat's NIO poller will accept and hold at once, including idle keep-alive connections that aren't currently being processed. Connections beyond the 200 processing threads don't get refused here — they just sit in the poller until a thread frees up. |
+| `server.tomcat.accept-count` | 100 | OS-level TCP backlog for connection attempts arriving after `max-connections` is already full. Only kicks in once 8192 connections are already open, which requires far more concurrent clients than this app has ever been load tested against. Beyond this, the OS refuses/resets new connections outright. |
+
+In practice, for this app's traffic pattern the ceiling that matters is `threads.max=200`: with only ~150-250 concurrent requests exercised in load testing (see memory table above), `max-connections` and `accept-count` have never come close to being the binding constraint. Raising the memory limit alone doesn't increase how many requests can be served concurrently — it only gives the JVM more room to run at the existing 200-thread ceiling.
+
+To raise the ceiling, pass the equivalent Spring Boot properties as JVM system properties in `JAVA_OPTS` (or as `SERVER_TOMCAT_THREADS_MAX`/`SERVER_TOMCAT_MAX_CONNECTIONS`/`SERVER_TOMCAT_ACCEPT_COUNT` environment variables, via Spring's relaxed env binding):
 
 ```bash
 docker run -p 8080:8080 --memory=4g \
@@ -67,7 +75,19 @@ docker run -p 8080:8080 --memory=4g \
   image-search-api
 ```
 
-Raising the thread cap increases the number of requests that can be in flight at once, and each one holds its own thread stack and request/response buffers — so it also raises the memory the JVM can actually use under load. Re-run load testing at the new thread count before increasing it in production, and scale the memory limit up alongside it rather than in isolation.
+Raising the thread cap increases the number of requests that can be in flight at once, and each one holds its own thread stack and request/response buffers — so it also raises the memory the JVM can actually use under load. Re-run load testing at the new thread count before increasing it in production, and scale the memory limit up alongside it rather than in isolation. `max-connections` (8192) is already well above `threads.max`, so it rarely needs raising in lockstep — only revisit it if load testing shows connections queuing in the poller before threads are saturated (e.g. many slow/idle clients holding keep-alive connections open).
+
+### Timeouts
+
+Also unmodified from Spring Boot's defaults:
+
+| Property | Default | Behavior |
+|---|---|---|
+| `server.tomcat.connection-timeout` | 60000ms (60s) | How long the connector waits, after accepting a connection, for the client to send the request line/headers. Protects against slow-loris-style clients that open a connection and trickle bytes, tying up a poller slot indefinitely. |
+| `server.tomcat.keep-alive-timeout` | Falls back to `connection-timeout` (60s) | How long an idle keep-alive connection can sit between requests before Tomcat closes it. Matters directly for the `max-connections` ceiling above: a lower value frees up poller slots faster under high client churn, at the cost of more TCP/TLS handshakes for clients that would otherwise reuse the connection. |
+| `server.tomcat.max-keep-alive-requests` | 100 | Number of requests a single keep-alive connection can serve before Tomcat closes it and forces a new connection. Exists to bound how long one connection can monopolize a poller slot, and to spread load evenly if requests get routed through a load balancer with per-connection stickiness. |
+
+None of these interact with the Solr query itself — there's no explicit HTTP client timeout configured against `p44.arquivo.pt` (see `waybackAddress`/`solr.server` in `pom.xml`), so a slow or hung Solr response can hold a Tomcat worker thread for as long as the underlying socket read takes, which is a more direct way to exhaust the 200-thread pool than any of the connector-level settings above.
 
 ## Development
 
