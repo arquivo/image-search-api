@@ -10,8 +10,13 @@ FROM eclipse-temurin:8-jre-jammy
 WORKDIR /app
 COPY --from=build /app/target/image-search-api.war app.war
 
-# Extra JVM flags at runtime, e.g. -agentlib:jdwp=... for remote debugging
-ENV JAVA_OPTS=""
+# Default JVM flags: size the heap off the container's memory limit (not the
+# host's) so behavior stays consistent across environments, use G1 for more
+# predictable pause times than JDK 8's default Parallel GC, and fail fast on
+# OOM so the container exits and can be restarted by the orchestrator instead
+# of limping along. Override JAVA_OPTS entirely (e.g. to add
+# -agentlib:jdwp=... for remote debugging) when running the image.
+ENV JAVA_OPTS="-XX:+UseG1GC -XX:MaxRAMPercentage=75.0 -XX:InitialRAMPercentage=50.0 -XX:+ExitOnOutOfMemoryError"
 
 EXPOSE 8080
 
