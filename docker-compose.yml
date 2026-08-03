@@ -6,10 +6,6 @@ services:
       - "8080:8080"
       - "8000:8000" # used for debug
       - "9010:9010" # used for debug
-    # Mirrors the recommended production limit (see README) so local runs
-    # size the heap the same way; -XX:MaxRAMPercentage in the Dockerfile's
-    # default JAVA_OPTS reads this limit.
-    mem_limit: 2g
     environment:
       # Debug/JMX flags, on top of the Dockerfile's default JAVA_OPTS (GC +
       # heap sizing), since this fully replaces JAVA_OPTS rather than appending to it.
