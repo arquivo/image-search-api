@@ -5,6 +5,11 @@ services:
       - "8080:8080"
       - "8000:8000" # used for debug
       - "9010:9010" # used for debug
+    # Mirrors the recommended production limit (see README) so local runs
+    # size the heap the same way; -XX:MaxRAMPercentage in the Dockerfile's
+    # default JAVA_OPTS reads this limit.
+    mem_limit: 1g
     environment:
-      # run the embedded Tomcat in debug mode
-      JAVA_OPTS: -agentlib:jdwp=transport=dt_socket,address=8000,server=y,suspend=n -Dcom.sun.management.jmxremote=true -Dcom.sun.management.jmxremote.rmi.port=9010 -Dcom.sun.management.jmxremote.port=9010 -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=false
+      # Debug/JMX flags, on top of the Dockerfile's default JAVA_OPTS (GC +
+      # heap sizing), since this fully replaces JAVA_OPTS rather than appending to it.
+      JAVA_OPTS: -XX:+UseG1GC -XX:MaxRAMPercentage=75.0 -XX:InitialRAMPercentage=50.0 -XX:+ExitOnOutOfMemoryError -agentlib:jdwp=transport=dt_socket,address=8000,server=y,suspend=n -Dcom.sun.management.jmxremote=true -Dcom.sun.management.jmxremote.rmi.port=9010 -Dcom.sun.management.jmxremote.port=9010 -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=false
