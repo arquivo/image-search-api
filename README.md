@@ -103,6 +103,31 @@ connection and socket timeouts are configurable via `healthcheck.solr.connection
 fails the check quickly. It's meant as a rolling-deploy gate for external tooling to poll, not as this
 container's own health check.
 
+### Suggested docker-compose.yml for production
+
+The commands above translate into a `docker-compose.yml` like this, using the image published to Docker Hub by the `Build and Push Docker Image` GitHub Actions workflow (`docker.io/arquivo/image-search-api`) instead of building locally. Pin `<version>` to a specific released tag (e.g. a semver tag such as `1.2.3`) rather than `latest`, so a redeploy always gets the exact image you tested. It doesn't override `JAVA_OPTS`, since the Dockerfile's defaults are already production-tuned:
+
+```yaml
+services:
+  image-search-api:
+    image: docker.io/arquivo/image-search-api:<version>
+    ports:
+      - "8080:8080"
+    mem_limit: 4g
+    restart: unless-stopped
+    healthcheck:
+      # Bare TCP connect, not a full HTTP request - every path here is mapped to the
+      # search servlet, so any HTTP request would trigger a real Solr query. This only
+      # confirms Tomcat itself is up and accepting connections on 8080.
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080' 2>/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 40s
+      retries: 3
+```
+
+The Solr host is baked into the war at build time (`solr.server` in `pom.xml`, defaulting to `p44.arquivo.pt`), so the published image always points there. If production needs a different Solr host, build and push a custom image with `SOLR_SERVER` set (see `docker-compose build --build-arg SOLR_SERVER=...` below) rather than trying to override it at runtime.
+
 ## Development
 
 To make development more rapid there is a docker-compose.yml file that runs the web application inside a docker.
