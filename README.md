@@ -84,3 +84,19 @@ Example with custom solr server:
 ```bash
 docker-compose build --build-arg SOLR_SERVER=p51.arquivo.pt && docker-compose up
 ```
+
+## Configuration
+
+Unlike `SOLR_SERVER` above (a Docker build arg), the following are plain Maven properties (see
+`pom.xml`), filtered into `servlet.properties` and passed to `ImageSearchServlet` as init
+parameters at startup. Override them at build time with `-D`:
+
+```bash
+mvn clean package -Dsolr.timeallowed.ms=5000
+```
+
+- `solr.timeallowed.ms` (default `10000`) caps how long Solr is allowed to spend processing a
+  single query (via Solr's `timeAllowed` parameter), applied to every request made to Solr. This
+  protects Solr from being overwhelmed by slow-running queries; 10s is considered the maximum
+  time that is acceptable for users to wait for a search query. An invalid (non-numeric) value
+  falls back to the default.

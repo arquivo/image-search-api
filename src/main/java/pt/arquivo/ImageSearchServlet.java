@@ -51,6 +51,10 @@ public class ImageSearchServlet extends HttpServlet {
     private static String collectionsHost = null;
     private static String solrHost = null;
     private static String solrCollection = null;
+    // Max time (ms) Solr is allowed to spend processing a single query (timeAllowed param),
+    // so a slow-running query can't overwhelm it.
+    private static final int DEFAULT_TIME_ALLOWED_MS = 10000;
+    private int timeAllowedMs = DEFAULT_TIME_ALLOWED_MS;
     Calendar DATE_END = new GregorianCalendar();
     private static final String V1_DEFAULT_FL_STRING = "imgDigest,imgSrc,imgMimeType,imgHeight,imgWidth,imgTstamp,imgTitle,imgAlt,imgCaption,pageURL,pageTstamp,pageTitle,collection,imgLinkToArchive,pageLinkToArchive";
     private static final String V1_MOREFIELDS = "pageHost,matchingImages,safe";
@@ -87,6 +91,8 @@ public class ImageSearchServlet extends HttpServlet {
             LOG.debug("[init] Null waybackHost parameter in Web.xml");
             throw new ServletException("ERROR solrCollection in Web.xml");
         }
+
+        timeAllowedMs = parseToIntWithDefault(config.getInitParameter("solrTimeAllowedMs"), DEFAULT_TIME_ALLOWED_MS);
 
         solr = createSolr(solrHost, solrCollection);
 
@@ -234,6 +240,7 @@ public class ImageSearchServlet extends HttpServlet {
 
 
             SolrQuery solrQuery = new SolrQuery();
+            solrQuery.set("timeAllowed", timeAllowedMs);
 
             if (q.trim().isEmpty()) {
                 q = "*:*";
