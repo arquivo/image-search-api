@@ -127,6 +127,53 @@ class ImageSearchServletTest {
         assertDoesNotThrow(() -> freshServlet.init(config));
     }
 
+    @Test
+    void initReadsConfigurableTimeAllowedFromServletConfig() throws Exception {
+        ServletConfig config = servletConfigWith("https://wayback.example.com/", "http://solr.example.com/solr/", "imagesearch");
+        lenient().when(config.getInitParameter("solrTimeAllowedMs")).thenReturn("5000");
+
+        ImageSearchServlet freshServlet = new ImageSearchServlet();
+        freshServlet.init(config);
+        freshServlet.setSolrClient(solrClient);
+
+        ArgumentCaptor<SolrQuery> captor = ArgumentCaptor.forClass(SolrQuery.class);
+        freshServlet.doGet(request, response);
+        verify(solrClient).query(captor.capture());
+
+        assertEquals("5000", captor.getValue().get("timeAllowed"));
+    }
+
+    @Test
+    void initFallsBackToDefaultTimeAllowedWhenNotConfigured() throws Exception {
+        ServletConfig config = servletConfigWith("https://wayback.example.com/", "http://solr.example.com/solr/", "imagesearch");
+
+        ImageSearchServlet freshServlet = new ImageSearchServlet();
+        freshServlet.init(config);
+        freshServlet.setSolrClient(solrClient);
+
+        ArgumentCaptor<SolrQuery> captor = ArgumentCaptor.forClass(SolrQuery.class);
+        freshServlet.doGet(request, response);
+        verify(solrClient).query(captor.capture());
+
+        assertEquals("10000", captor.getValue().get("timeAllowed"));
+    }
+
+    @Test
+    void initFallsBackToDefaultTimeAllowedWhenNotNumeric() throws Exception {
+        ServletConfig config = servletConfigWith("https://wayback.example.com/", "http://solr.example.com/solr/", "imagesearch");
+        lenient().when(config.getInitParameter("solrTimeAllowedMs")).thenReturn("not-a-number");
+
+        ImageSearchServlet freshServlet = new ImageSearchServlet();
+        freshServlet.init(config);
+        freshServlet.setSolrClient(solrClient);
+
+        ArgumentCaptor<SolrQuery> captor = ArgumentCaptor.forClass(SolrQuery.class);
+        freshServlet.doGet(request, response);
+        verify(solrClient).query(captor.capture());
+
+        assertEquals("10000", captor.getValue().get("timeAllowed"));
+    }
+
     // ---------------------------------------------------------------
     // Request-building tests: assert what we actually send to Solr
     // ---------------------------------------------------------------
@@ -151,6 +198,14 @@ class ImageSearchServletTest {
                 new SolrQuery.SortClause("imgCrawlTimestamp", SolrQuery.ORDER.asc),
                 new SolrQuery.SortClause("imgUrl", SolrQuery.ORDER.asc)
         ), sorts);
+    }
+
+    @Test
+    void defaultRequestSetsTimeAllowedTo10000ms() throws Exception {
+        // servlet is constructed directly via setUp(), without going through init(ServletConfig)
+        SolrQuery solrQuery = runAndCaptureSolrQuery();
+
+        assertEquals("10000", solrQuery.get("timeAllowed"));
     }
 
     @Test
