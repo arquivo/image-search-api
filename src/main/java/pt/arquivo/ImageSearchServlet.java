@@ -234,6 +234,7 @@ public class ImageSearchServlet extends HttpServlet {
 
 
             SolrQuery solrQuery = new SolrQuery();
+            solrQuery.set("shards.tolerant", "true");
 
             if (q.trim().isEmpty()) {
                 q = "*:*";

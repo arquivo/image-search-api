@@ -19,6 +19,10 @@ docker build -t image-search-api .
 docker run -p 8080:8080 image-search-api
 ```
 
+## Solr shard fault tolerance
+
+Queries are sent to Solr with `shards.tolerant=true`, so if a shard/node is temporarily unavailable, the API returns partial results from the reachable shards instead of failing the whole request. When this happens, `numFound` and the results themselves will undercount for the missing shard(s); Solr flags degraded responses via `partialResults=true` in the response header, visible when the request includes `debug=on`.
+
 ## Production deployment with Docker
 
 The image ships with default JVM flags (see `JAVA_OPTS` in the `Dockerfile`) tuned for running in a memory-constrained container:
