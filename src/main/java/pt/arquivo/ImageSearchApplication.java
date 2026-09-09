@@ -22,6 +22,9 @@ public class ImageSearchApplication extends SpringBootServletInitializer {
     @Value("${wayback.host}")
     private String waybackHost;
 
+    @Value("${solr.timeallowed.ms}")
+    private String solrTimeAllowedMs;
+
     public static void main(String[] args) {
         // log4j.properties resolves ${catalina.home} for its log file path; the embedded
         // Tomcat never sets it, so default it here before Spring/log4j initialize, or the
@@ -42,6 +45,7 @@ public class ImageSearchApplication extends SpringBootServletInitializer {
         registration.addInitParameter("solrServer", solrServer);
         registration.addInitParameter("solrCollection", solrCollection);
         registration.addInitParameter("waybackHost", waybackHost);
+        registration.addInitParameter("solrTimeAllowedMs", solrTimeAllowedMs);
         return registration;
     }
 }
