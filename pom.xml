@@ -19,6 +19,7 @@
 		<broker.image.search.solr.server>http://${solr.server}:3200/solr/</broker.image.search.solr.server>
 		<broker.image.search.solr.collection>images</broker.image.search.solr.collection>
 		<wayback.server>preprod.arquivo.pt/wayback</wayback.server>
+		<solr.timeallowed.ms>10000</solr.timeallowed.ms>
 	</properties>
 	<dependencies>
 		<dependency>
