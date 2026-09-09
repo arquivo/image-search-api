@@ -79,8 +79,8 @@ Example run
 docker-compose up --build
 ```
 
-Example with custom solr server:
+By default it points to a local Solr at `http://127.0.0.1:3200/solr/`. To point at a different one, pass `SOLR_SERVER` (a full base URL) when running compose:
 
 ```bash
-docker-compose build --build-arg SOLR_SERVER=p51.arquivo.pt && docker-compose up
+SOLR_SERVER=http://<solr-host>:3200/solr/ docker-compose up --build
 ```
