@@ -69,6 +69,16 @@ docker run -p 8080:8080 --memory=4g \
 
 Raising the thread cap increases the number of requests that can be in flight at once, and each one holds its own thread stack and request/response buffers — so it also raises the memory the JVM can actually use under load. Re-run load testing at the new thread count before increasing it in production, and scale the memory limit up alongside it rather than in isolation.
 
+## Health Check
+
+`GET /imagesearch/healthcheck` pings the Solr instance configured via `solr.server`/`solr.collection`
+using a dedicated SolrClient, independent of the one that serves `/imagesearch` queries. Returns
+`200 {"solr": "ok"}` when Solr is reachable, or `503 {"solr": "unreachable"}` otherwise. The ping's
+connection and socket timeouts are configurable via `healthcheck.solr.connectiontimeout.ms` (default
+2000) and `healthcheck.solr.sockettimeout.ms` (default 3000), so a Solr that's up but hanging still
+fails the check quickly. It's meant as a rolling-deploy gate for external tooling to poll, not as this
+container's own health check.
+
 ## Development
 
 To make development more rapid there is a docker-compose.yml file that runs the web application inside a docker.
