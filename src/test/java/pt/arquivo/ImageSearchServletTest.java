@@ -440,6 +440,13 @@ class ImageSearchServletTest {
     }
 
     @Test
+    void queryToleratesUnavailableShards() throws Exception {
+        SolrQuery solrQuery = runAndCaptureSolrQuery();
+
+        assertEquals("true", solrQuery.get("shards.tolerant"));
+    }
+
+    @Test
     void collapseOperatorInQueryAddsCollapseFilter() throws Exception {
         params.put("q", "cats collapse:imgDigest");
 
