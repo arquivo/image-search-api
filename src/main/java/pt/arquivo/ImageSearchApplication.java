@@ -1,5 +1,7 @@
 package pt.arquivo;
 
+import org.apache.solr.client.solrj.SolrClient;
+import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -43,5 +45,28 @@ public class ImageSearchApplication extends SpringBootServletInitializer {
         registration.addInitParameter("solrCollection", solrCollection);
         registration.addInitParameter("waybackHost", waybackHost);
         return registration;
+    }
+
+    /**
+     * Dedicated to the /imagesearch/healthcheck endpoint, so it never shares state or timeouts with the
+     * SolrClient ImageSearchServlet uses to serve queries. Timeouts are explicit and comparatively short,
+     * so a Solr that's up but hanging fails the healthcheck quickly instead of blocking the deploy gate
+     * that calls it.
+     */
+    @Bean
+    SolrClient healthCheckSolrClient(
+            @Value("${healthcheck.solr.connectiontimeout.ms:2000}") int connectionTimeoutMillis,
+            @Value("${healthcheck.solr.sockettimeout.ms:3000}") int socketTimeoutMillis) {
+        return new HttpSolrClient.Builder(solrServer + solrCollection)
+                .withConnectionTimeout(connectionTimeoutMillis)
+                .withSocketTimeout(socketTimeoutMillis)
+                .build();
+    }
+
+    @Bean
+    public ServletRegistrationBean<HealthCheckServlet> healthCheckServlet(SolrClient healthCheckSolrClient) {
+        HealthCheckServlet servlet = new HealthCheckServlet();
+        servlet.setSolrClient(healthCheckSolrClient);
+        return new ServletRegistrationBean<>(servlet, "/imagesearch/healthcheck");
     }
 }
