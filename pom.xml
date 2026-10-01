@@ -15,7 +15,7 @@
 
 		<spring-boot.version>2.7.18</spring-boot.version>
 
-		<solr.server>p44.arquivo.pt</solr.server>
+		<solr.server>127.0.0.1</solr.server>
 		<broker.image.search.solr.server>http://${solr.server}:3200/solr/</broker.image.search.solr.server>
 		<broker.image.search.solr.collection>images</broker.image.search.solr.collection>
 		<wayback.server>preprod.arquivo.pt/wayback</wayback.server>
