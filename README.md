@@ -154,8 +154,8 @@ parameters at startup. Override them at build time with `-D`:
 mvn clean package -Dsolr.timeallowed.ms=5000
 ```
 
-- `solr.timeallowed.ms` (default `10000`) caps how long Solr is allowed to spend processing a
+- `solr.timeallowed.ms` (default `60000`) caps how long Solr is allowed to spend processing a
   single query (via Solr's `timeAllowed` parameter), applied to every request made to Solr. This
-  protects Solr from being overwhelmed by slow-running queries; 10s is considered the maximum
+  protects Solr from being overwhelmed by slow-running queries; 60s is considered the maximum
   time that is acceptable for users to wait for a search query. An invalid (non-numeric) value
   falls back to the default.
