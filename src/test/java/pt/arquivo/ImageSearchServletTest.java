@@ -155,7 +155,7 @@ class ImageSearchServletTest {
         freshServlet.doGet(request, response);
         verify(solrClient).query(captor.capture());
 
-        assertEquals("10000", captor.getValue().get("timeAllowed"));
+        assertEquals("60000", captor.getValue().get("timeAllowed"));
     }
 
     @Test
@@ -171,7 +171,7 @@ class ImageSearchServletTest {
         freshServlet.doGet(request, response);
         verify(solrClient).query(captor.capture());
 
-        assertEquals("10000", captor.getValue().get("timeAllowed"));
+        assertEquals("60000", captor.getValue().get("timeAllowed"));
     }
 
     // ---------------------------------------------------------------
@@ -201,11 +201,11 @@ class ImageSearchServletTest {
     }
 
     @Test
-    void defaultRequestSetsTimeAllowedTo10000ms() throws Exception {
+    void defaultRequestSetsTimeAllowedTo60000ms() throws Exception {
         // servlet is constructed directly via setUp(), without going through init(ServletConfig)
         SolrQuery solrQuery = runAndCaptureSolrQuery();
 
-        assertEquals("10000", solrQuery.get("timeAllowed"));
+        assertEquals("60000", solrQuery.get("timeAllowed"));
     }
 
     @Test

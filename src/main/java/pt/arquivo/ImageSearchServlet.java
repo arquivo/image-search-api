@@ -53,7 +53,7 @@ public class ImageSearchServlet extends HttpServlet {
     private static String solrCollection = null;
     // Max time (ms) Solr is allowed to spend processing a single query (timeAllowed param),
     // so a slow-running query can't overwhelm it.
-    private static final int DEFAULT_TIME_ALLOWED_MS = 10000;
+    private static final int DEFAULT_TIME_ALLOWED_MS = 60000;
     private int timeAllowedMs = DEFAULT_TIME_ALLOWED_MS;
     Calendar DATE_END = new GregorianCalendar();
     private static final String V1_DEFAULT_FL_STRING = "imgDigest,imgSrc,imgMimeType,imgHeight,imgWidth,imgTstamp,imgTitle,imgAlt,imgCaption,pageURL,pageTstamp,pageTitle,collection,imgLinkToArchive,pageLinkToArchive";
