@@ -43,7 +43,7 @@ jobs:
             type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix={{branch}}-,enable=${{ github.event_name == 'push' && contains(fromJSON('["refs/heads/master","refs/heads/main","refs/heads/development"]'), github.ref) }}
+            type=sha,enable=${{ github.event_name == 'push' && contains(fromJSON('["refs/heads/master","refs/heads/main","refs/heads/development"]'), github.ref) }}
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Docker image
