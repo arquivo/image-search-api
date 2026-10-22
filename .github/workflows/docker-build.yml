@@ -5,17 +5,13 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - master
       - main
-      - development
     tags:
       - 'v*'
       - '*'
   pull_request:
     branches:
-      - master
       - main
-      - development
 
 jobs:
   build:
@@ -49,7 +45,7 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
