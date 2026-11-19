@@ -36,11 +36,13 @@ public class HealthCheckServlet extends HttpServlet {
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
 
+        // RuntimeException too: SolrJ's Jetty-based client throws IllegalArgumentException for a Solr URL it can't
+        // parse, e.g. a ZooKeeper host list, so catch it to answer 503 rather than a 500 page.
         try {
             solr.ping();
             response.setStatus(HttpServletResponse.SC_OK);
             response.getWriter().println(GSON.toJson(Collections.singletonMap("solr", "ok")));
-        } catch (SolrServerException | IOException e) {
+        } catch (SolrServerException | IOException | RuntimeException e) {
             LOG.error("Solr healthcheck failed: ", e);
             response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
             response.getWriter().println(GSON.toJson(Collections.singletonMap("solr", "unreachable")));

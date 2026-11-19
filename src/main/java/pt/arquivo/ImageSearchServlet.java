@@ -5,8 +5,8 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParseException;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrQuery;
-import org.apache.solr.client.solrj.impl.CloudSolrClient;
-import org.apache.solr.client.solrj.impl.HttpSolrClient;
+import org.apache.solr.client.solrj.impl.CloudHttp2SolrClient;
+import org.apache.solr.client.solrj.impl.Http2SolrClient;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.client.solrj.util.ClientUtils;
 import org.apache.solr.common.SolrDocument;
@@ -55,6 +55,8 @@ public class ImageSearchServlet extends HttpServlet {
     // so a slow-running query can't overwhelm it.
     private static final int DEFAULT_TIME_ALLOWED_MS = 60000;
     private int timeAllowedMs = DEFAULT_TIME_ALLOWED_MS;
+    // Matches Tomcat's default worker thread count, so every worker can hold a Solr connection at once.
+    private static final int DEFAULT_MAX_CONNECTIONS_PER_HOST = 200;
     Calendar DATE_END = new GregorianCalendar();
     private static final String V1_DEFAULT_FL_STRING = "imgDigest,imgSrc,imgMimeType,imgHeight,imgWidth,imgTstamp,imgTitle,imgAlt,imgCaption,pageURL,pageTstamp,pageTitle,collection,imgLinkToArchive,pageLinkToArchive";
     private static final String V1_MOREFIELDS = "pageHost,matchingImages,safe";
@@ -94,13 +96,27 @@ public class ImageSearchServlet extends HttpServlet {
 
         timeAllowedMs = parseToIntWithDefault(config.getInitParameter("solrTimeAllowedMs"), DEFAULT_TIME_ALLOWED_MS);
 
-        solr = createSolr(solrHost, solrCollection);
+        int maxConnectionsPerHost = parseToIntWithDefault(config.getInitParameter("solrMaxConnectionsPerHost"), DEFAULT_MAX_CONNECTIONS_PER_HOST);
+
+        solr = createSolr(solrHost, solrCollection, maxConnectionsPerHost);
 
     }
 
     // Package-private seam so tests can inject a mock SolrClient without going through init(ServletConfig).
     void setSolrClient(SolrClient solr) {
         this.solr = solr;
+    }
+
+    // The Solr client owns an HTTP client with its own threads, so release them when the webapp stops.
+    @Override
+    public void destroy() {
+        if (solr != null) {
+            try {
+                solr.close();
+            } catch (IOException e) {
+                LOG.warn("[destroy] Error closing Solr client", e);
+            }
+        }
     }
 
 
@@ -436,16 +452,28 @@ public class ImageSearchServlet extends HttpServlet {
         solrQuery.set("ps3", 3);
     }
 
-    private SolrClient createSolr(String solrHost, String solrCollection) {
+    static SolrClient createSolr(String solrHost, String solrCollection, int maxConnectionsPerHost) {
         SolrClient solr = null;
         if (solrHost.contains(",")) {
             final List<String> zkServers = Arrays.asList(solrHost.split(","));
-            solr = new CloudSolrClient.Builder(zkServers, Optional.of("/solr")).build();
-            ((CloudSolrClient) solr).setDefaultCollection(solrCollection);
+            solr = new CloudHttp2SolrClient.Builder(zkServers, Optional.of("/solr"))
+                    .withDefaultCollection(solrCollection)
+                    .withHttpClientBuilder(httpClientBuilder(null, maxConnectionsPerHost))
+                    .build();
         } else {
-            solr = new HttpSolrClient.Builder(solrHost + solrCollection).build();
+            solr = httpClientBuilder(solrHost + solrCollection, maxConnectionsPerHost).build();
         }
         return solr;
+    }
+
+    // HTTP/1.1 instead of SolrJ's default HTTP/2, matching how the Solr nodes talk to each other
+    // (-Dsolr.http1=true). Each in-flight HTTP/1.1 request needs its own connection, so the pool is
+    // sized explicitly instead of left at Jetty's default of 64 per host.
+    static Http2SolrClient.Builder httpClientBuilder(String baseUrl, int maxConnectionsPerHost) {
+        Http2SolrClient.Builder builder = baseUrl == null ? new Http2SolrClient.Builder() : new Http2SolrClient.Builder(baseUrl);
+        return builder
+                .useHttp1_1(true)
+                .withMaxConnectionsPerHost(maxConnectionsPerHost);
     }
 
     private void parseCollectionFilter(String requestedCollection, ArrayList<String> fqStrings) {

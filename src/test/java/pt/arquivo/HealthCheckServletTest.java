@@ -71,4 +71,14 @@ class HealthCheckServletTest {
         verify(response).setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
         assertEquals("{\"solr\":\"unreachable\"}", responseBody.toString().trim());
     }
+
+    @Test
+    void healthcheckSolrUnreachableOnRuntimeException() throws Exception {
+        lenient().when(solrClient.ping()).thenThrow(new IllegalArgumentException("Invalid URI host: null"));
+
+        servlet.doGet(request, response);
+
+        verify(response).setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+        assertEquals("{\"solr\":\"unreachable\"}", responseBody.toString().trim());
+    }
 }
