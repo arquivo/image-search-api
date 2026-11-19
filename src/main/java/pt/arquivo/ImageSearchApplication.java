@@ -64,6 +64,15 @@ public class ImageSearchApplication {
                 .build();
     }
 
+    // Loaded on startup, so a broken OpenAPI description fails the start instead of the first docs request.
+    @Bean
+    public ServletRegistrationBean<ApiDocsServlet> apiDocsServlet() {
+        ServletRegistrationBean<ApiDocsServlet> registration =
+                new ServletRegistrationBean<>(new ApiDocsServlet(), "/imagesearch/api-docs/*");
+        registration.setLoadOnStartup(1);
+        return registration;
+    }
+
     @Bean
     public ServletRegistrationBean<HealthCheckServlet> healthCheckServlet(SolrClient healthCheckSolrClient) {
         HealthCheckServlet servlet = new HealthCheckServlet();

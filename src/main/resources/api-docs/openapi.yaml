@@ -1,0 +1,400 @@
+openapi: 3.0.3
+info:
+  title: Arquivo.pt Image Search API
+  version: "1.1"
+  description: |
+    Search the images preserved by [Arquivo.pt](https://arquivo.pt), the Portuguese web archive, from 1996 onwards.
+
+    Each result is an archived image: where and when it was captured, its size and type, the text around it (alt,
+    title and caption), the page it was found on, and links to replay the image and the page.
+
+    ## Searching
+
+    Search with `GET /imagesearch?q=<terms>`:
+
+    - Terms are matched against the image's title, alt text, caption and URL, and the title and URL of the page that
+      contains it.
+    - Terms within double quotes match as an exact phrase, e.g. `q="António Costa"`.
+    - A leading `-` excludes the images matching a term, e.g. `q=Albert -Einstein`.
+    - `q` also accepts the operators `site:`, `type:`, `size:` and `safe:`, which filter like the `siteSearch`, `type`,
+      `size` and `safeSearch` parameters, e.g. `q=farol site:publico.pt type:png`. Unlike `siteSearch`, `site:` takes
+      no `*.` wildcards.
+
+    The results can be narrowed down by capture date (`from`, `to`), site (`siteSearch`), image type (`type`), image
+    size (`size`) and collection (`collection`). Images automatically classified as not safe for work are left out
+    unless `safeSearch=off`.
+
+    ## Results
+
+    - **Pagination**: `maxItems` results are returned per page (50 by default, at most 200), starting at `offset`.
+      `nextPage` and `previousPage` link to the neighbouring pages.
+    - **Fields**: each result has a default set of fields. `more` adds fields to that set, and `fields` replaces it.
+      `linkToMoreFields` repeats the request with a few more fields.
+
+    Responses are JSON (`prettyPrint=true` indents them) and can be requested cross-origin from a browser.
+  license:
+    name: GPL-3.0
+    url: https://github.com/arquivo/image-search-api/blob/main/LICENSE
+externalDocs:
+  description: Arquivo.pt API documentation
+  url: https://arquivo.pt/api
+# Relative, so clients resolve it against the URL the spec was loaded from, e.g. https://arquivo.pt through Apache.
+servers:
+  - url: /
+tags:
+  - name: ImageSearch
+    description: Search the archived images
+  - name: HealthCheck
+    description: Check the connectivity of this service's dependencies
+paths:
+  /imagesearch:
+    get:
+      tags: [ImageSearch]
+      summary: Search archived images
+      operationId: imageSearch
+      parameters:
+        - name: q
+          in: query
+          description: >-
+            Search terms. Quotes match an exact phrase, a leading `-` excludes a term, and the `site:`, `type:`,
+            `size:` and `safe:` operators filter like the `siteSearch`, `type`, `size` and `safeSearch` parameters
+            (`site:` without wildcards). Without terms, every image matching the other parameters is returned.
+          schema:
+            type: string
+          examples:
+            terms:
+              summary: Terms
+              value: Cristiano Ronaldo
+            phrase:
+              summary: Exact phrase
+              value: '"António Costa"'
+            operators:
+              summary: Terms with operators
+              value: farol site:publico.pt type:png
+        - name: from
+          in: query
+          description: >-
+            Earliest capture date of the images, as `yyyyMMddHHmmss` or just the year, `yyyy`. Without `from` and
+            `to`, images from every date are returned. An invalid value counts as 1996.
+          schema:
+            type: string
+            pattern: '^[0-9]{4}([0-9]{10})?$'
+          example: "2005"
+        - name: to
+          in: query
+          description: >-
+            Latest capture date of the images, as `yyyyMMddHHmmss` or just the year, `yyyy`, which includes the
+            whole year. An invalid value counts as now.
+          schema:
+            type: string
+            pattern: '^[0-9]{4}([0-9]{10})?$'
+          example: "20151022163016"
+        - name: type
+          in: query
+          description: >-
+            Comma-separated list of image MIME subtypes to return, e.g. `png`, `jpeg` (or `jpg`), `gif`.
+          schema:
+            type: string
+          example: png,gif
+        - name: size
+          in: query
+          description: >-
+            Size of the images, by area: `sm` up to 65536 px² (256×256), `md` from 65537 to 810000 px² (900×900),
+            `lg` above 810000 px². Any other value returns every size.
+          schema:
+            type: string
+            enum: [all, sm, md, lg]
+            default: all
+        - name: offset
+          in: query
+          description: Position of the first result to return, for pagination.
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: maxItems
+          in: query
+          description: Number of results to return. Values above 200 return 200.
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 200
+            default: 50
+        - name: siteSearch
+          in: query
+          description: >-
+            Comma-separated list of sites to search within. A site matches that host and its `www.` host. Prefix it
+            with `*.` to match its subdomains, e.g. `publico.pt,*.publico.pt` matches `publico.pt` and every
+            subdomain.
+          schema:
+            type: string
+          example: publico.pt
+        - name: collection
+          in: query
+          description: >-
+            Comma-separated list of Arquivo.pt collections to search within, e.g. `AWP10`. See the
+            [list of collections](https://docs.google.com/spreadsheets/u/2/d/e/2PACX-1vSwVV3LqlmS7Ia4cFEO85cWr8Ip16TxMXCWFGPxVBCJhlpfkdqT45ykjDx3zLiYXsL3mC6OZuVyqwYS/pubhtml).
+          schema:
+            type: string
+          example: AWP10
+        - name: safeSearch
+          in: query
+          description: >-
+            `on` leaves out the images automatically classified as not safe for work, `off` returns them too.
+          schema:
+            type: string
+            enum: ["on", "off"]
+            default: "on"
+        - name: fields
+          in: query
+          description: >-
+            Comma-separated list of the fields to return for each result, replacing the default ones. See
+            `ImageSearchItem` for the available fields.
+          schema:
+            type: string
+          example: imgSrc,imgTstamp,imgLinkToArchive
+        - name: more
+          in: query
+          description: Comma-separated list of fields to return on top of the default ones, or of `fields`.
+          schema:
+            type: string
+          example: pageHost,matchingImages,safe
+        - name: prettyPrint
+          in: query
+          description: "`true` indents the JSON response and adds `linkToDocumentation`."
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: The search results
+          headers:
+            Access-Control-Allow-Origin:
+              description: Always `*`
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageSearchResponse'
+        "500":
+          description: The search failed, e.g. because the search backend is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageSearchErrorResponse'
+  /imagesearch/healthcheck:
+    get:
+      tags: [HealthCheck]
+      summary: Check the connectivity to Solr
+      description: >-
+        Pings the Solr search backend, with short timeouts so a Solr that is up but hanging also fails the check.
+      operationId: healthCheck
+      responses:
+        "200":
+          description: Solr is reachable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckResponse'
+              example:
+                solr: ok
+        "503":
+          description: Solr is unreachable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckResponse'
+              example:
+                solr: unreachable
+components:
+  schemas:
+    ImageSearchResponse:
+      type: object
+      properties:
+        serviceName:
+          type: string
+          example: Arquivo.pt - image search service.
+        linkToService:
+          type: string
+          format: uri
+          description: The image search page of Arquivo.pt
+          example: https://arquivo.pt/images.jsp
+        linkToDocumentation:
+          type: string
+          format: uri
+          description: The documentation of this API, only with `prettyPrint=true`
+        linkToMoreFields:
+          type: string
+          format: uri
+          description: This request with more fields, `pageHost`, `matchingImages` and `safe`
+        nextPage:
+          type: string
+          format: uri
+          description: This request for the next page of results
+        previousPage:
+          type: string
+          format: uri
+          description: This request for the previous page of results
+        totalItems:
+          type: integer
+          format: int64
+          description: Number of images matching the search, across every page
+          example: 15443161
+        numberOfResponseItems:
+          type: integer
+          description: Number of results in `responseItems`
+          example: 50
+        offset:
+          type: integer
+          format: int64
+          description: Position of the first result in `responseItems`
+          example: 0
+        responseItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImageSearchItem'
+    ImageSearchItem:
+      type: object
+      description: >-
+        An archived image. The fields without "(default)" are only returned when listed in `fields` or `more`, and
+        a field missing for an image is left out.
+      properties:
+        imgSrc:
+          type: string
+          description: (default) URL of the image
+          example: http://www.fitfiu.pt/store/97-home_default/abelhas.jpg
+        imgTstamp:
+          type: string
+          description: (default) Capture date of the image, `yyyyMMddHHmmss`
+          example: "20161106094914"
+        imgMimeType:
+          type: string
+          description: (default) MIME type of the image
+          example: image/jpeg
+        imgWidth:
+          type: integer
+          description: (default) Width of the image, in pixels
+          example: 250
+        imgHeight:
+          type: integer
+          description: (default) Height of the image, in pixels
+          example: 250
+        imgTitle:
+          type: array
+          items:
+            type: string
+          description: (default) The title attributes of the image
+          example: [Sapos]
+        imgAlt:
+          type: array
+          items:
+            type: string
+          description: (default) The alt attributes of the image
+          example: [Sapos]
+        imgCaption:
+          type: array
+          items:
+            type: string
+          description: (default) Text of the page close to the image
+          example: ["4,50 € Disponível"]
+        imgLinkToArchive:
+          type: string
+          format: uri
+          description: (default) Link to replay the archived image
+          example: https://arquivo.pt/wayback/20161106094914im_/http://www.fitfiu.pt/store/97-home_default/abelhas.jpg
+        pageURL:
+          type: string
+          description: (default) URL of the page that contains the image
+          example: http://www.fitfiu.pt/store/76-meias-com-aplicacao
+        pageTstamp:
+          type: string
+          description: (default) Capture date of the page, `yyyyMMddHHmmss`
+          example: "20161106094703"
+        pageTitle:
+          type: string
+          description: (default) Title of the page
+          example: Meias para bebé com aplicação - Fit Fiu
+        pageLinkToArchive:
+          type: string
+          format: uri
+          description: (default) Link to replay the archived page
+          example: https://arquivo.pt/wayback/20161106094703/http://www.fitfiu.pt/store/76-meias-com-aplicacao
+        collection:
+          type: array
+          items:
+            type: string
+          description: (default) The Arquivo.pt collections the image was archived in
+          example: [AWP22]
+        imgDigest:
+          type: string
+          description: (default) Digest of the image content, which identifies it
+          example: 3bd33657c260c2e52425c3bbee5605894d677ae58827740524a2a91c8ef1c914
+        pageHost:
+          type: string
+          description: Host of the page that contains the image
+          example: www.fitfiu.pt
+        pageImages:
+          type: integer
+          description: Number of images in the page
+          example: 105
+        safe:
+          type: number
+          format: float
+          description: >-
+            Probability that the image is safe for work, from 0 to 1, by automatic classification. Images below 0.5
+            are considered not safe for work.
+          example: 0.925
+        imageMetadataChanges:
+          type: integer
+          description: Number of times the metadata of the image changed across its captures
+          example: 5
+        pageMetadataChanges:
+          type: integer
+          description: Number of times the metadata of the page changed across its captures
+          example: 3
+        matchingImages:
+          type: integer
+          description: Number of times the image was captured
+          example: 32
+        matchingPages:
+          type: integer
+          description: Number of pages the image was found in
+          example: 41
+    ImageSearchErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          description: The error type, mapped to its message
+          additionalProperties:
+            type: string
+        serviceName:
+          type: string
+          example: Arquivo.pt - image search service.
+        linkToService:
+          type: string
+          format: uri
+        linkToDocumentation:
+          type: string
+          format: uri
+        totalItems:
+          type: integer
+          example: 0
+        numberOfResponseItems:
+          type: integer
+          example: 0
+        offset:
+          type: integer
+          example: 0
+        responseItems:
+          type: array
+          maxItems: 0
+          items:
+            $ref: '#/components/schemas/ImageSearchItem'
+    HealthCheckResponse:
+      type: object
+      properties:
+        solr:
+          type: string
+          enum: [ok, unreachable]
