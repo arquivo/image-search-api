@@ -2,9 +2,9 @@ name: Maven CI
 
 on:
   push:
-    branches: [master, development]
+    branches: [main]
   pull_request:
-    branches: [master, development]
+    branches: [main]
 
 jobs:
   build-and-test:
@@ -14,11 +14,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 8
+      - name: Set up JDK 11
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '8'
+          java-version: '11'
           cache: maven
 
       - name: Build and test with Maven

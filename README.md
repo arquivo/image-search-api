@@ -19,6 +19,12 @@ docker build -t image-search-api .
 docker run -p 8080:8080 image-search-api
 ```
 
+## Solr client
+
+`solr.server` is either a Solr base URL (e.g. `http://<solr-host>:3200/solr/`), queried directly, or a comma-separated ZooKeeper host list (chroot `/solr`), queried through SolrJ's SolrCloud client. Keep the `solr-solrj` dependency on the same major version as the Solr cluster.
+
+Both modes talk HTTP/1.1 to Solr instead of SolrJ's default HTTP/2, matching how the Solr nodes talk to each other (they run with `-Dsolr.http1=true`). With HTTP/1.1 every in-flight query holds its own connection, so the pool of connections per Solr host is sized to `server.tomcat.threads.max` (default 200), the most queries that can be in flight at once. Raising Tomcat's thread cap (see below) raises it too.
+
 ## Solr shard fault tolerance
 
 Queries are sent to Solr with `shards.tolerant=true`, so if a shard/node is temporarily unavailable, the API returns partial results from the reachable shards instead of failing the whole request. When this happens, `numFound` and the results themselves will undercount for the missing shard(s); Solr flags degraded responses via `partialResults=true` in the response header, visible when the request includes `debug=on`.
@@ -27,7 +33,7 @@ Queries are sent to Solr with `shards.tolerant=true`, so if a shard/node is temp
 
 The image ships with default JVM flags (see `JAVA_OPTS` in the `Dockerfile`) tuned for running in a memory-constrained container:
 
-- `-XX:+UseG1GC` — G1 instead of JDK 8's default Parallel GC, for more predictable pause times on a request/response API.
+- `-XX:+UseG1GC` — G1, for predictable pause times on a request/response API. Set explicitly because the JVM silently falls back to Serial GC in containers with fewer than 2 CPUs or under ~1.8 GiB of memory.
 - `-XX:MaxRAMPercentage=75.0 -XX:InitialRAMPercentage=50.0` — size the heap as a percentage of the container's memory limit instead of a fixed `-Xmx`/`-Xms`, so the same image behaves correctly across environments with different memory limits.
 - `-XX:+ExitOnOutOfMemoryError` — exit on OOM instead of limping along in a broken state, so the orchestrator restarts the container.
 
@@ -47,7 +53,7 @@ In Kubernetes, set the equivalent `resources.limits.memory` (and match `requests
 | 2 GiB | ~150 | ~89% | 2 | 0 | no |
 | 4 GiB | ~250 | ~84% | 2 | 0 | no |
 
-The error rate was the same (~0.7-1%) across all three runs and came from the backend Solr server, not container memory — confirmed by reproducing the same errors directly against Solr outside the app. 1 GiB is unsafe: it leaves no headroom for the next load spike, since JDK 8's G1 does not release committed heap back to the OS afterwards, so usage stays pinned near the ceiling. 4 GiB was chosen over 2 GiB to leave comfortable margin for traffic spikes above the ~150-250 concurrent requests exercised here, and to leave room for raising Tomcat's thread pool size (see below) without immediately re-approaching the memory ceiling. With `MaxRAMPercentage=75.0` that's a 3 GiB heap ceiling and ~1 GiB for Metaspace, thread stacks, code cache, and direct/NIO buffers.
+The error rate was the same (~0.7-1%) across all three runs and came from the backend Solr server, not container memory — confirmed by reproducing the same errors directly against Solr outside the app. 1 GiB is unsafe: it leaves no headroom for the next load spike, since G1 on the JDK 8 runtime these tests ran on does not release committed heap back to the OS afterwards, so usage stays pinned near the ceiling. 4 GiB was chosen over 2 GiB to leave comfortable margin for traffic spikes above the ~150-250 concurrent requests exercised here, and to leave room for raising Tomcat's thread pool size (see below) without immediately re-approaching the memory ceiling. With `MaxRAMPercentage=75.0` that's a 3 GiB heap ceiling and ~1 GiB for Metaspace, thread stacks, code cache, and direct/NIO buffers.
 
 This number is based on synthetic load, not real arquivo.pt production traffic — revisit it once real peak-concurrency numbers are available.
 
@@ -100,7 +106,7 @@ using a dedicated SolrClient, independent of the one that serves `/imagesearch` 
 `200 {"solr": "ok"}` when Solr is reachable, or `503 {"solr": "unreachable"}` otherwise. The ping's
 connection and socket timeouts are configurable via `healthcheck.solr.connectiontimeout.ms` (default
 2000) and `healthcheck.solr.sockettimeout.ms` (default 3000), so a Solr that's up but hanging still
-fails the check quickly. It's meant as a rolling-deploy gate for external tooling to poll, not as this
+fails the check quickly. It needs a Solr URL in `solr.server`: with a ZooKeeper host list it always answers 503. It's meant as a rolling-deploy gate for external tooling to poll, not as this
 container's own health check.
 
 ### Suggested docker-compose.yml for production

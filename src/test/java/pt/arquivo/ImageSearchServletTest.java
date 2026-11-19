@@ -5,10 +5,13 @@ import com.google.gson.JsonParser;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.client.solrj.SolrServerException;
+import org.apache.solr.client.solrj.impl.CloudHttp2SolrClient;
+import org.apache.solr.client.solrj.impl.Http2SolrClient;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.common.SolrDocument;
 import org.apache.solr.common.SolrDocumentList;
 import org.apache.solr.common.util.NamedList;
+import org.apache.solr.common.util.SimpleOrderedMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,6 +23,7 @@ import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.text.SimpleDateFormat;
@@ -38,6 +42,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 
@@ -172,6 +177,46 @@ class ImageSearchServletTest {
         verify(solrClient).query(captor.capture());
 
         assertEquals("60000", captor.getValue().get("timeAllowed"));
+    }
+
+    @Test
+    void destroyClosesSolrClient() throws Exception {
+        servlet.destroy();
+
+        verify(solrClient).close();
+    }
+
+    @Test
+    void destroyDoesNotThrowWhenSolrClientFailsToClose() throws Exception {
+        doThrow(new IOException("boom")).when(solrClient).close();
+
+        assertDoesNotThrow(() -> servlet.destroy());
+    }
+
+    @Test
+    void destroyDoesNotThrowBeforeInit() {
+        assertDoesNotThrow(() -> new ImageSearchServlet().destroy());
+    }
+
+    @Test
+    void createSolrBuildsHttpClientForSingleSolrUrl() throws Exception {
+        try (SolrClient client = ImageSearchServlet.createSolr("http://solr.example.com/solr/", "images", 200)) {
+            assertTrue(client instanceof Http2SolrClient);
+            assertEquals("http://solr.example.com/solr/images", ((Http2SolrClient) client).getBaseURL());
+        }
+    }
+
+    @Test
+    void createSolrBuildsCloudClientForZooKeeperHostList() throws Exception {
+        try (SolrClient client = ImageSearchServlet.createSolr("zk1:2181,zk2:2181", "images", 200)) {
+            assertTrue(client instanceof CloudHttp2SolrClient);
+            assertEquals("images", client.getDefaultCollection());
+        }
+    }
+
+    @Test
+    void httpClientBuilderUsesHttp11() {
+        assertTrue(ImageSearchServlet.httpClientBuilder("http://solr.example.com/solr/images", 200).shouldUseHttp1_1());
     }
 
     // ---------------------------------------------------------------
@@ -819,6 +864,20 @@ class ImageSearchServletTest {
 
         assertTrue(json.has("response"));
         assertTrue(json.has("responseHeader"));
+    }
+
+    @Test
+    void debugModeSerializesResponseHeaderAsPlainObject() throws Exception {
+        params.put("debug", "on");
+        SimpleOrderedMap<Object> header = new SimpleOrderedMap<>();
+        header.add("status", 0);
+        header.add("partialResults", true);
+        lenient().doReturn(header).when(queryResponse).getResponseHeader();
+
+        JsonObject responseHeader = runAndParseJsonResponse().getAsJsonObject("responseHeader");
+
+        assertTrue(responseHeader.get("partialResults").getAsBoolean());
+        assertEquals(0, responseHeader.get("status").getAsInt());
     }
 
     @Test
