@@ -3,11 +3,11 @@ Web app that acts as an API proxy of Apache Solr taht contains web archived imag
 
 ## Build
 
-It produces a self-executable war file with an embedded Tomcat.
+It produces a self-executable jar file with an embedded Tomcat.
 
 ```bash
 mvn clean package
-java -jar target/image-search-api.war
+java -jar target/image-search-api.jar
 ```
 
 ## Docker
@@ -67,7 +67,7 @@ docker run -p 8080:8080 --memory=4g \
 
 ### Concurrency limit: Tomcat's connection and thread pool
 
-Independently of container memory, Spring Boot's embedded Tomcat (9.0.x, via the 2.7.18 parent) caps concurrent traffic with three unmodified defaults that stack on top of each other, not one:
+Independently of container memory, Spring Boot's embedded Tomcat (11.0.x, via Spring Boot 4.1) caps concurrent traffic with three unmodified defaults that stack on top of each other, not one:
 
 | Property | Default | What it actually limits |
 |---|---|---|
@@ -132,7 +132,11 @@ services:
       retries: 3
 ```
 
-The Solr host is baked into the war at build time (`solr.server` in `pom.xml`, defaulting to `p44.arquivo.pt`), so the published image always points there. If production needs a different Solr host, build and push a custom image with `SOLR_SERVER` set (see `docker-compose build --build-arg SOLR_SERVER=...` below) rather than trying to override it at runtime.
+The default Solr host is baked into the jar at build time (`solr.server` in `pom.xml`). Point the published image at another Solr at runtime with the `SOLR_SERVER` environment variable (and `SOLR_COLLECTION`), which Spring Boot's environment variable binding gives priority over the baked-in value.
+
+## Logging
+
+The app logs to stdout in Spring Boot's default format, so `docker logs` / `docker compose logs` show everything, Tomcat and SolrJ included. It writes no log files. Change levels with Spring Boot's `logging.level.*` properties, e.g. the environment variable `LOGGING_LEVEL_PT_ARQUIVO=DEBUG`.
 
 ## Development
 
