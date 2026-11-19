@@ -8,7 +8,7 @@ RUN mvn clean package -B -DskipTests ${SOLR_SERVER:+-Dsolr.server=${SOLR_SERVER}
 
 FROM eclipse-temurin:25-jre-noble
 WORKDIR /app
-COPY --from=build /app/target/image-search-api.war app.war
+COPY --from=build /app/target/image-search-api.jar app.jar
 
 # Default JVM flags: size the heap off the container's memory limit (not the
 # host's) so behavior stays consistent across environments, use G1 for
@@ -21,4 +21,4 @@ ENV JAVA_OPTS="-XX:+UseG1GC -XX:MaxRAMPercentage=75.0 -XX:InitialRAMPercentage=5
 
 EXPOSE 8080
 
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.war"]
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

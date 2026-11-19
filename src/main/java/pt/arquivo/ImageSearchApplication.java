@@ -5,9 +5,7 @@ import org.apache.solr.client.solrj.impl.Http2SolrClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.web.servlet.ServletRegistrationBean;
-import org.springframework.boot.web.servlet.support.SpringBootServletInitializer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.PropertySource;
 
@@ -15,7 +13,7 @@ import java.util.concurrent.TimeUnit;
 
 @SpringBootApplication
 @PropertySource("classpath:servlet.properties")
-public class ImageSearchApplication extends SpringBootServletInitializer {
+public class ImageSearchApplication {
 
     @Value("${solr.server}")
     private String solrServer;
@@ -39,11 +37,6 @@ public class ImageSearchApplication extends SpringBootServletInitializer {
         // path collapses to "/logs/..." at the filesystem root.
         System.setProperty("catalina.home", System.getProperty("catalina.home", System.getProperty("user.dir")));
         SpringApplication.run(ImageSearchApplication.class, args);
-    }
-
-    @Override
-    protected SpringApplicationBuilder configure(SpringApplicationBuilder application) {
-        return application.sources(ImageSearchApplication.class);
     }
 
     @Bean

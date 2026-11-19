@@ -3,11 +3,11 @@ Web app that acts as an API proxy of Apache Solr taht contains web archived imag
 
 ## Build
 
-It produces a self-executable war file with an embedded Tomcat.
+It produces a self-executable jar file with an embedded Tomcat.
 
 ```bash
 mvn clean package
-java -jar target/image-search-api.war
+java -jar target/image-search-api.jar
 ```
 
 ## Docker
@@ -132,7 +132,7 @@ services:
       retries: 3
 ```
 
-The Solr host is baked into the war at build time (`solr.server` in `pom.xml`, defaulting to `p44.arquivo.pt`), so the published image always points there. If production needs a different Solr host, build and push a custom image with `SOLR_SERVER` set (see `docker-compose build --build-arg SOLR_SERVER=...` below) rather than trying to override it at runtime.
+The default Solr host is baked into the jar at build time (`solr.server` in `pom.xml`). Point the published image at another Solr at runtime with the `SOLR_SERVER` environment variable (and `SOLR_COLLECTION`), which Spring Boot's environment variable binding gives priority over the baked-in value.
 
 ## Development
 
