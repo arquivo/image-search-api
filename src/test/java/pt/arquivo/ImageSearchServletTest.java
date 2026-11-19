@@ -19,10 +19,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import javax.servlet.ServletConfig;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.ServletConfig;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -95,7 +95,7 @@ class ImageSearchServletTest {
 
     private JsonObject runAndParseJsonResponse() throws Exception {
         servlet.doGet(request, response);
-        return new JsonParser().parse(responseBody.toString()).getAsJsonObject();
+        return JsonParser.parseString(responseBody.toString()).getAsJsonObject();
     }
 
     private static List<String> filterQueries(SolrQuery solrQuery) {

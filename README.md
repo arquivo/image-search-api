@@ -67,7 +67,7 @@ docker run -p 8080:8080 --memory=4g \
 
 ### Concurrency limit: Tomcat's connection and thread pool
 
-Independently of container memory, Spring Boot's embedded Tomcat (9.0.x, via the 2.7.18 parent) caps concurrent traffic with three unmodified defaults that stack on top of each other, not one:
+Independently of container memory, Spring Boot's embedded Tomcat (11.0.x, via Spring Boot 4.1) caps concurrent traffic with three unmodified defaults that stack on top of each other, not one:
 
 | Property | Default | What it actually limits |
 |---|---|---|
