@@ -375,10 +375,8 @@ components:
       type: object
       properties:
         error:
-          type: object
-          description: The error type, mapped to its message
-          additionalProperties:
-            type: string
+          type: string
+          example: The search failed.
         serviceName:
           type: string
           example: Arquivo.pt - image search service.

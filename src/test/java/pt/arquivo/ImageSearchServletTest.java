@@ -897,7 +897,8 @@ class ImageSearchServletTest {
         JsonObject json = runAndParseJsonResponse();
 
         verify(response).setStatus(500);
-        JsonObject error = json.getAsJsonObject("error");
-        assertEquals("boom", error.get(SolrServerException.class.getCanonicalName()).getAsString());
+        assertEquals("The search failed.", json.get("error").getAsString());
+        assertFalse(json.toString().contains("boom"));
+        assertFalse(json.toString().contains("SolrServerException"));
     }
 }

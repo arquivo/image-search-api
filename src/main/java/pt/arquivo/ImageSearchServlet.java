@@ -320,10 +320,10 @@ public class ImageSearchServlet extends HttpServlet {
             }
             //} catch (IOException | HttpSolrClient.RemoteSolrException | SolrServerException e) {
             //    LOG.error(e.getClass().getCanonicalName(), e);
-            //    imgSearchResponse = new ImageSearchErrorResponse(e);
+            //    imgSearchResponse = new ImageSearchErrorResponse();
         } catch (Throwable e) {
             LOG.error(e.getClass().getCanonicalName(), e);
-            imgSearchResponse = new ImageSearchErrorResponse(e);
+            imgSearchResponse = new ImageSearchErrorResponse();
             response.setStatus(500);
         }
         /*finally {
