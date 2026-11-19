@@ -1,5 +1,6 @@
 package pt.arquivo;
 
+import com.google.gson.Gson;
 import org.apache.solr.common.SolrDocument;
 import org.apache.solr.common.SolrDocumentList;
 import org.junit.jupiter.api.Test;
@@ -122,5 +123,16 @@ class ImageSearchResultsTest {
         String expectedWayback = ImageSearchProperties.get("waybackAddress");
         assertEquals(expectedWayback + "20200115120000im_/http://example.com/img.jpg",
                 mapped.getFieldValue("imgLinkToArchive"));
+    }
+
+    @Test
+    void serializedResponseHasOnlyApiFields() {
+        SolrDocumentList docs = new SolrDocumentList();
+        docs.add(new SolrDocument());
+
+        String json = new Gson().toJson(build(new String[]{"imgSrc"}, 1, 1, docs));
+
+        assertFalse(json.contains("fieldReturnability"), json);
+        assertFalse(json.contains("V1_DATE_FORMAT"), json);
     }
 }

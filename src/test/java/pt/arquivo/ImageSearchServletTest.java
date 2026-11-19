@@ -604,6 +604,22 @@ class ImageSearchServletTest {
                 solrQuery.getSorts());
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"site:", "siteSearch="})
+    void siteOperatorAndParameterKeepSubdomainWildcards(String form) throws Exception {
+        if (form.equals("site:")) {
+            params.put("q", "cats site:*.publico.pt,sapo.pt");
+        } else {
+            params.put("q", "cats");
+            params.put("siteSearch", "*.publico.pt,sapo.pt");
+        }
+
+        List<String> fq = filterQueries(runAndCaptureSolrQuery());
+
+        assertTrue(fq.contains("(pageHost:*.publico.pt OR pageHost:www.*.publico.pt) OR "
+                + "(pageHost:sapo.pt OR pageHost:www.sapo.pt)"), fq.toString());
+    }
+
     @Test
     void sortOperatorAcceptsApiFieldNames() throws Exception {
         params.put("q", "cats sort:imgTstamp,DESC");

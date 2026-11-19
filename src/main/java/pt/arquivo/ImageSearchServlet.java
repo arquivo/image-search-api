@@ -606,8 +606,8 @@ public class ImageSearchServlet extends HttpServlet {
             for (String word : words) {
                 if (word.toLowerCase().startsWith("site:")) {
                     LOG.debug("found site:");
-                    String domains = ClientUtils.escapeQueryChars(word.replace("site:", ""));
-                    parseSiteFilter(domains, fqStrings);
+                    // parseSiteFilter escapes the domains itself, keeping the * wildcard
+                    parseSiteFilter(word.substring("site:".length()), fqStrings);
                 } else if (word.toLowerCase().startsWith("type:")) {
                     LOG.debug("found type:");
                     String typeWord = word.replace("type:", "");

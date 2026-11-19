@@ -17,8 +17,7 @@ info:
     - Terms within double quotes match as an exact phrase, e.g. `q="António Costa"`.
     - A leading `-` excludes the images matching a term, e.g. `q=Albert -Einstein`.
     - `q` also accepts the operators `site:`, `type:`, `size:` and `safe:`, which filter like the `siteSearch`, `type`,
-      `size` and `safeSearch` parameters, e.g. `q=farol site:publico.pt type:png`. Unlike `siteSearch`, `site:` takes
-      no `*.` wildcards.
+      `size` and `safeSearch` parameters, e.g. `q=farol site:publico.pt type:png`.
     - `q` also accepts `sort:<expression>,<asc|desc>` to order the results, several separated by `;`, e.g.
       `sort:imgTstamp,desc;imgWidth,asc`. The expression is one of the fields `imgTstamp`, `pageTstamp`, `imgWidth`,
       `imgHeight`, `pageImages`, `matchingImages`, `matchingPages`, `imageMetadataChanges`, `pageMetadataChanges` or
@@ -63,8 +62,7 @@ paths:
           in: query
           description: >-
             Search terms. Quotes match an exact phrase, a leading `-` excludes a term, the `site:`, `type:`, `size:`
-            and `safe:` operators filter like the `siteSearch`, `type`, `size` and `safeSearch` parameters (`site:`
-            without wildcards), and `sort:` orders the results (see the description above). Without terms, every
+            and `safe:` operators filter like the `siteSearch`, `type`, `size` and `safeSearch` parameters, and `sort:` orders the results (see the description above). Without terms, every
             image matching the other parameters is returned.
           schema:
             type: string
