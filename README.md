@@ -134,6 +134,10 @@ services:
 
 The default Solr host is baked into the jar at build time (`solr.server` in `pom.xml`). Point the published image at another Solr at runtime with the `SOLR_SERVER` environment variable (and `SOLR_COLLECTION`), which Spring Boot's environment variable binding gives priority over the baked-in value.
 
+## Logging
+
+The app logs to stdout in Spring Boot's default format, so `docker logs` / `docker compose logs` show everything, Tomcat and SolrJ included. It writes no log files. Change levels with Spring Boot's `logging.level.*` properties, e.g. the environment variable `LOGGING_LEVEL_PT_ARQUIVO=DEBUG`.
+
 ## Development
 
 To make development more rapid there is a docker-compose.yml file that runs the web application inside a docker.

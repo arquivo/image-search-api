@@ -32,10 +32,6 @@ public class ImageSearchApplication {
     private String tomcatMaxThreads;
 
     public static void main(String[] args) {
-        // log4j.properties resolves ${catalina.home} for its log file path; the embedded
-        // Tomcat never sets it, so default it here before Spring/log4j initialize, or the
-        // path collapses to "/logs/..." at the filesystem root.
-        System.setProperty("catalina.home", System.getProperty("catalina.home", System.getProperty("user.dir")));
         SpringApplication.run(ImageSearchApplication.class, args);
     }
 
