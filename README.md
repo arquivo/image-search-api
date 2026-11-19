@@ -99,6 +99,13 @@ Also unmodified from Spring Boot's defaults:
 
 None of these interact with the Solr query itself — there's no explicit HTTP client timeout configured against `p44.arquivo.pt` (see `waybackAddress`/`solr.server` in `pom.xml`), so a slow or hung Solr response can hold a Tomcat worker thread for as long as the underlying socket read takes, which is a more direct way to exhaust the 200-thread pool than any of the connector-level settings above.
 
+## API documentation
+
+The API is described in OpenAPI 3 in `src/main/resources/api-docs/openapi.yaml`, written by hand because the search is a plain servlet with nothing to generate the description from. Update it along with any change to the request parameters or the response. The app serves it under `/imagesearch/api-docs`, following the convention of [pwa-technologies#1588](https://github.com/arquivo/pwa-technologies/issues/1588), so Apache's existing `/imagesearch` proxy publishes it without changes:
+
+- Swagger UI: `/imagesearch/api-docs`, e.g. http://localhost:8080/imagesearch/api-docs
+- OpenAPI 3 description (JSON): `/imagesearch/api-docs/v3`
+
 ## Health Check
 
 `GET /imagesearch/healthcheck` pings the Solr instance configured via `solr.server`/`solr.collection`
