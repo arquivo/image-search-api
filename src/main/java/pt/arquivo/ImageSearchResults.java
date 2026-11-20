@@ -31,7 +31,7 @@ public class ImageSearchResults {
     public static final String V2_WAYBACKADDRESS = ImageSearchProperties.get("waybackAddress");
     
     // Hashtable to quickly check if each field should be included in the returned document (to support "fields" query)
-    private Dictionary<String,Boolean> fieldReturnability = new Hashtable<String,Boolean>();
+    private transient Dictionary<String,Boolean> fieldReturnability = new Hashtable<String,Boolean>();
 
 
     SolrDocumentList responseItems;

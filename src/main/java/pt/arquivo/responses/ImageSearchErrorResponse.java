@@ -1,14 +1,12 @@
 package pt.arquivo.responses;
 
 import org.apache.solr.common.SolrDocumentList;
-import pt.arquivo.ImageSearchResults;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.util.HashMap;
-
+// The reply to a failed search. It says only that the search failed: the cause is logged by ImageSearchServlet.
 public class ImageSearchErrorResponse {
-	HashMap<String,String> error;
+	static final String MESSAGE = "The search failed.";
+
+	String error;
 
 	String serviceName;
 	String linkToService;
@@ -18,7 +16,8 @@ public class ImageSearchErrorResponse {
 	long offset;
 	SolrDocumentList responseItems;
 
-	public ImageSearchErrorResponse(Throwable e){
+	public ImageSearchErrorResponse(){
+		this.error = MESSAGE;
 		this.serviceName = "Arquivo.pt - image search service.";
 		this.linkToService = "https://arquivo.pt/images.jsp";
 		this.linkToDocumentation = "https://github.com/arquivo/pwa-technologies/wiki/ImageSearch-API-v1-(beta)";
@@ -26,16 +25,5 @@ public class ImageSearchErrorResponse {
 		this.numberOfResponseItems = 0;
 		this.offset = 0;
 		this.responseItems = new SolrDocumentList();
-
-
-		this.error = new HashMap<>();
-		this.error.put(e.getClass().getCanonicalName(), e.getMessage());
-
-		/*
-		PrintWriter sb = new PrintWriter(new StringWriter());
-		e.printStackTrace(sb);
-
-		this.error.put(e.getClass().getCanonicalName(), sb.toString());
-		 */
 	}
 }

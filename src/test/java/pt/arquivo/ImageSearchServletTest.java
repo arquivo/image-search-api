@@ -15,6 +15,8 @@ import org.apache.solr.common.util.SimpleOrderedMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -38,6 +40,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -227,7 +230,9 @@ class ImageSearchServletTest {
     void defaultRequestUsesMatchAllQueryAndDefaultFilters() throws Exception {
         SolrQuery solrQuery = runAndCaptureSolrQuery();
 
-        assertEquals("*:*", solrQuery.getQuery());
+        assertNull(solrQuery.getQuery());
+        assertEquals("*:*", solrQuery.get("q.alt"));
+        assertEquals("-*", solrQuery.get("uf"));
         assertEquals(Integer.valueOf(50), solrQuery.getRows());
         assertEquals(Integer.valueOf(0), solrQuery.getStart());
         assertEquals("edismax", solrQuery.get("defType"));
@@ -430,22 +435,23 @@ class ImageSearchServletTest {
         assertTrue(filterQueries(solrQuery).contains("collection:foo OR collection:bar"));
     }
 
-    @Test
-    void inlineQueryOperatorsAreParsedIntoFiltersAndSortInsteadOfQuery() throws Exception {
-        params.put("q", "cats site:example.com type:png safe:off size:sm sort:imgCrawlTimestamp,desc");
+    // q only carries the text to search: Solr searches anything else in it as text (uf=-*)
+    @ParameterizedTest
+    @ValueSource(strings = {"cats site:example.com type:png safe:off size:sm sort:imgCrawlTimestamp,desc",
+            "cats fq:blocked:1 collapse:imgDigest", "imgMimeType:image/png"})
+    void queryIsPassedAsTextWithoutFieldQueries(String q) throws Exception {
+        params.put("q", q);
 
         SolrQuery solrQuery = runAndCaptureSolrQuery();
 
-        assertEquals("cats", solrQuery.getQuery());
-
-        List<String> fq = filterQueries(solrQuery);
-        assertTrue(fq.contains("(pageHost:example.com OR pageHost:www.example.com)"));
-        assertTrue(fq.contains("imgMimeType: image/png"));
-        assertTrue(fq.contains("{!frange u=65536 }product(imgHeight,imgWidth)"));
-        assertFalse(fq.stream().anyMatch(f -> f.startsWith("safe:")));
-
+        assertEquals(q, solrQuery.getQuery());
+        assertEquals("-*", solrQuery.get("uf"));
+        assertEquals(Arrays.asList("safe:[0 TO 0.49]", "blocked:0", "isInline:false"), filterQueries(solrQuery));
         assertEquals(
-                Arrays.asList(new SolrQuery.SortClause("imgCrawlTimestamp", SolrQuery.ORDER.desc)),
+                Arrays.asList(
+                        new SolrQuery.SortClause("score", SolrQuery.ORDER.desc),
+                        new SolrQuery.SortClause("imgCrawlTimestamp", SolrQuery.ORDER.asc),
+                        new SolrQuery.SortClause("imgUrl", SolrQuery.ORDER.asc)),
                 solrQuery.getSorts());
     }
 
@@ -470,34 +476,13 @@ class ImageSearchServletTest {
     }
 
     @Test
-    void fqOperatorInQueryReplacesMatchingFilterAndAddsNew() throws Exception {
-        params.put("q", "cats fq:blocked:1");
-
-        SolrQuery solrQuery = runAndCaptureSolrQuery();
-
-        assertEquals("cats", solrQuery.getQuery());
-        List<String> fq = filterQueries(solrQuery);
-        assertFalse(fq.contains("blocked:0"));
-        assertTrue(fq.contains("blocked:1"));
-    }
-
-    @Test
-    void fqOperatorWithMultipleSemicolonSeparatedTokensAndUnderscoreUnescaping() throws Exception {
-        params.put("q", "cats fq:blocked:1;pageHost:example_com");
-
-        SolrQuery solrQuery = runAndCaptureSolrQuery();
-
-        assertEquals("cats", solrQuery.getQuery());
-        List<String> fq = filterQueries(solrQuery);
-        assertFalse(fq.contains("blocked:0"));
-        assertTrue(fq.contains("blocked:1"));
-        assertTrue(fq.contains("pageHost:example com"));
-    }
-
-    @Test
-    void allInlineOperatorsCombinedInASingleQueryAreAllParsedCorrectly() throws Exception {
-        params.put("q", "cats site:example.com type:png safe:off size:sm sort:imgCrawlTimestamp,desc "
-                + "fq:collection:foo collapse:imgDigest");
+    void dedicatedParametersFilterAndSort() throws Exception {
+        params.put("q", "cats");
+        params.put("siteSearch", "example.com");
+        params.put("type", "png");
+        params.put("safeSearch", "off");
+        params.put("size", "sm");
+        params.put("sort", "imgCrawlTimestamp,desc");
 
         SolrQuery solrQuery = runAndCaptureSolrQuery();
 
@@ -508,35 +493,10 @@ class ImageSearchServletTest {
         assertTrue(fq.contains("imgMimeType: image/png"));
         assertTrue(fq.contains("{!frange u=65536 }product(imgHeight,imgWidth)"));
         assertFalse(fq.stream().anyMatch(f -> f.startsWith("safe:")));
-        assertTrue(fq.contains("collection:foo"));
-        assertTrue(fq.contains("{!collapse field=imgDigest}"));
 
         assertEquals(
                 Arrays.asList(new SolrQuery.SortClause("imgCrawlTimestamp", SolrQuery.ORDER.desc)),
                 solrQuery.getSorts());
-    }
-
-    @Test
-    void inlineSafeOffRemovesSafeFilterEntirely() throws Exception {
-        params.put("q", "cats safe:off");
-
-        SolrQuery solrQuery = runAndCaptureSolrQuery();
-
-        assertEquals("cats", solrQuery.getQuery());
-        assertFalse(filterQueries(solrQuery).stream().anyMatch(f -> f.startsWith("safe:")));
-    }
-
-    @Test
-    void inlineSafeOnLeavesExactlyOneSafeFilterNotDuplicated() throws Exception {
-        params.put("q", "cats safe:on");
-
-        SolrQuery solrQuery = runAndCaptureSolrQuery();
-
-        assertEquals("cats", solrQuery.getQuery());
-        List<String> safeFilters = filterQueries(solrQuery).stream()
-                .filter(f -> f.startsWith("safe:"))
-                .collect(java.util.stream.Collectors.toList());
-        assertEquals(Arrays.asList("safe:[0 TO 0.49]"), safeFilters);
     }
 
     @Test
@@ -547,18 +507,9 @@ class ImageSearchServletTest {
     }
 
     @Test
-    void collapseOperatorInQueryAddsCollapseFilter() throws Exception {
-        params.put("q", "cats collapse:imgDigest");
-
-        SolrQuery solrQuery = runAndCaptureSolrQuery();
-
-        assertEquals("cats", solrQuery.getQuery());
-        assertTrue(filterQueries(solrQuery).contains("{!collapse field=imgDigest}"));
-    }
-
-    @Test
-    void sortOperatorWithCaretAppliesPowTransform() throws Exception {
-        params.put("q", "cats sort:imgWidth^2,desc");
+    void sortParameterWithCaretAppliesPowTransform() throws Exception {
+        params.put("q", "cats");
+        params.put("sort", "imgWidth^2,desc");
 
         SolrQuery solrQuery = runAndCaptureSolrQuery();
 
@@ -569,8 +520,9 @@ class ImageSearchServletTest {
     }
 
     @Test
-    void sortOperatorWithAsteriskAppliesProductTransform() throws Exception {
-        params.put("q", "cats sort:imgWidth*imgHeight,asc");
+    void sortParameterWithAsteriskAppliesProductTransform() throws Exception {
+        params.put("q", "cats");
+        params.put("sort", "imgWidth*imgHeight,asc");
 
         SolrQuery solrQuery = runAndCaptureSolrQuery();
 
@@ -581,8 +533,9 @@ class ImageSearchServletTest {
     }
 
     @Test
-    void sortOperatorWithSlashAppliesDivTransform() throws Exception {
-        params.put("q", "cats sort:imgWidth/imgHeight,asc");
+    void sortParameterWithSlashAppliesDivTransform() throws Exception {
+        params.put("q", "cats");
+        params.put("sort", "imgWidth/imgHeight,asc");
 
         SolrQuery solrQuery = runAndCaptureSolrQuery();
 
@@ -593,8 +546,9 @@ class ImageSearchServletTest {
     }
 
     @Test
-    void sortOperatorWithPlusAppliesSumTransform() throws Exception {
-        params.put("q", "cats sort:imgWidth+imgHeight,asc");
+    void sortParameterWithPlusAppliesSumTransform() throws Exception {
+        params.put("q", "cats");
+        params.put("sort", "imgWidth+imgHeight,asc");
 
         SolrQuery solrQuery = runAndCaptureSolrQuery();
 
@@ -605,8 +559,9 @@ class ImageSearchServletTest {
     }
 
     @Test
-    void sortOperatorWithMinusAppliesSubTransform() throws Exception {
-        params.put("q", "cats sort:imgWidth-imgHeight,asc");
+    void sortParameterWithMinusAppliesSubTransform() throws Exception {
+        params.put("q", "cats");
+        params.put("sort", "imgWidth-imgHeight,asc");
 
         SolrQuery solrQuery = runAndCaptureSolrQuery();
 
@@ -617,8 +572,9 @@ class ImageSearchServletTest {
     }
 
     @Test
-    void sortOperatorWithMultipleSemicolonSeparatedInstancesAppliesEachClause() throws Exception {
-        params.put("q", "cats sort:imgCrawlTimestamp,desc;imgWidth,asc");
+    void sortParameterWithMultipleSemicolonSeparatedInstancesAppliesEachClause() throws Exception {
+        params.put("q", "cats");
+        params.put("sort", "imgCrawlTimestamp,desc;imgWidth,asc");
 
         SolrQuery solrQuery = runAndCaptureSolrQuery();
 
@@ -628,6 +584,55 @@ class ImageSearchServletTest {
                         new SolrQuery.SortClause("imgCrawlTimestamp", SolrQuery.ORDER.desc),
                         new SolrQuery.SortClause("imgWidth", SolrQuery.ORDER.asc)),
                 solrQuery.getSorts());
+    }
+
+    @Test
+    void siteSearchKeepsSubdomainWildcards() throws Exception {
+        params.put("q", "cats");
+        params.put("siteSearch", "*.publico.pt,sapo.pt");
+
+        List<String> fq = filterQueries(runAndCaptureSolrQuery());
+
+        assertTrue(fq.contains("(pageHost:*.publico.pt OR pageHost:www.*.publico.pt) OR "
+                + "(pageHost:sapo.pt OR pageHost:www.sapo.pt)"), fq.toString());
+    }
+
+    @Test
+    void sortParameterAcceptsApiFieldNames() throws Exception {
+        params.put("q", "cats");
+        params.put("sort", "imgTstamp,DESC");
+
+        assertEquals(
+                Arrays.asList(new SolrQuery.SortClause("imgCrawlTimestamp", SolrQuery.ORDER.desc)),
+                runAndCaptureSolrQuery().getSorts());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"blocked,desc", "imgWidth", "imgWidth,sideways", "imgWidth,asc,desc",
+            "query(blocked:1),desc", "imgWidth*blocked,asc", "imgWidth*imgHeight+2,asc", "score^2,desc", "-imgWidth,asc"})
+    void sortParameterLeavesOutInvalidClausesAndKeepsTheDefaultSort(String clause) throws Exception {
+        params.put("q", "cats");
+        params.put("sort", clause);
+
+        SolrQuery solrQuery = runAndCaptureSolrQuery();
+
+        assertEquals("cats", solrQuery.getQuery());
+        assertEquals(
+                Arrays.asList(
+                        new SolrQuery.SortClause("score", SolrQuery.ORDER.desc),
+                        new SolrQuery.SortClause("imgCrawlTimestamp", SolrQuery.ORDER.asc),
+                        new SolrQuery.SortClause("imgUrl", SolrQuery.ORDER.asc)),
+                solrQuery.getSorts());
+    }
+
+    @Test
+    void sortParameterKeepsTheValidClausesOfAList() throws Exception {
+        params.put("q", "cats");
+        params.put("sort", "blocked,desc;imgWidth,asc");
+
+        assertEquals(
+                Arrays.asList(new SolrQuery.SortClause("imgWidth", SolrQuery.ORDER.asc)),
+                runAndCaptureSolrQuery().getSorts());
     }
 
     // ---------------------------------------------------------------
@@ -888,7 +893,8 @@ class ImageSearchServletTest {
         JsonObject json = runAndParseJsonResponse();
 
         verify(response).setStatus(500);
-        JsonObject error = json.getAsJsonObject("error");
-        assertEquals("boom", error.get(SolrServerException.class.getCanonicalName()).getAsString());
+        assertEquals("The search failed.", json.get("error").getAsString());
+        assertFalse(json.toString().contains("boom"));
+        assertFalse(json.toString().contains("SolrServerException"));
     }
 }
