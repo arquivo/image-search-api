@@ -16,18 +16,12 @@ info:
       contains it.
     - Terms within double quotes match as an exact phrase, e.g. `q="António Costa"`.
     - A leading `-` excludes the images matching a term, e.g. `q=Albert -Einstein`.
-    - `q` also accepts the operators `site:`, `type:`, `size:` and `safe:`, which filter like the `siteSearch`, `type`,
-      `size` and `safeSearch` parameters, e.g. `q=farol site:publico.pt type:png`.
-    - `q` also accepts `sort:<expression>,<asc|desc>` to order the results, several separated by `;`, e.g.
-      `sort:imgTstamp,desc;imgWidth,asc`. The expression is one of the fields `imgTstamp`, `pageTstamp`, `imgWidth`,
-      `imgHeight`, `pageImages`, `matchingImages`, `matchingPages`, `imageMetadataChanges`, `pageMetadataChanges` or
-      `score`, or two of those fields or numbers joined by `^`, `*`, `/`, `+` (`%2B` in a URL) or `-` (power, product,
-      division, sum, difference), e.g. `sort:imgWidth*imgHeight,desc` orders by area. By default results are ordered
-      by relevance.
+    - `q` is only the text to search: `name:value` in it is searched as text, it doesn't select a field or set an
+      option. Every option has its own parameter.
 
     The results can be narrowed down by capture date (`from`, `to`), site (`siteSearch`), image type (`type`), image
     size (`size`) and collection (`collection`). Images automatically classified as not safe for work are left out
-    unless `safeSearch=off`.
+    unless `safeSearch=off`. They are ordered by relevance, unless `sort` sets another order.
 
     ## Results
 
@@ -61,9 +55,8 @@ paths:
         - name: q
           in: query
           description: >-
-            Search terms. Quotes match an exact phrase, a leading `-` excludes a term, the `site:`, `type:`, `size:`
-            and `safe:` operators filter like the `siteSearch`, `type`, `size` and `safeSearch` parameters, and `sort:` orders the results (see the description above). Without terms, every
-            image matching the other parameters is returned.
+            Text to search. Quotes match an exact phrase and a leading `-` excludes a term; anything else, `name:value`
+            included, is searched as text. Without text, every image matching the other parameters is returned.
           schema:
             type: string
           examples:
@@ -73,12 +66,9 @@ paths:
             phrase:
               summary: Exact phrase
               value: '"António Costa"'
-            operators:
-              summary: Terms with operators
-              value: farol site:publico.pt type:png
-            sort:
-              summary: Largest images first
-              value: farol sort:imgWidth*imgHeight,desc
+            exclusion:
+              summary: Excluded term
+              value: Albert -Einstein
         - name: from
           in: query
           description: >-
@@ -153,6 +143,24 @@ paths:
             type: string
             enum: ["on", "off"]
             default: "on"
+        - name: sort
+          in: query
+          description: >-
+            Order of the results, as `<expression>,<asc|desc>` clauses separated by `;`, e.g.
+            `imgTstamp,desc;imgWidth,asc`. The expression is one of the fields `imgTstamp`, `pageTstamp`, `imgWidth`,
+            `imgHeight`, `pageImages`, `matchingImages`, `matchingPages`, `imageMetadataChanges`,
+            `pageMetadataChanges` or `score`, or two of those fields or numbers joined by `^`, `*`, `/`, `+` (`%2B` in
+            a URL) or `-` (power, product, division, sum, difference), e.g. `imgWidth*imgHeight,desc` orders by area.
+            Invalid clauses are ignored. Without `sort`, results are ordered by relevance.
+          schema:
+            type: string
+          examples:
+            newest:
+              summary: Newest images first
+              value: imgTstamp,desc
+            largest:
+              summary: Largest images first
+              value: imgWidth*imgHeight,desc
         - name: fields
           in: query
           description: >-

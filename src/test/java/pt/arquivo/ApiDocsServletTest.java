@@ -91,7 +91,7 @@ class ApiDocsServletTest {
                 .collect(Collectors.toSet());
 
         assertEquals(Set.of("q", "from", "to", "type", "size", "offset", "maxItems", "siteSearch", "collection",
-                "safeSearch", "fields", "more", "prettyPrint"), documented);
+                "safeSearch", "sort", "fields", "more", "prettyPrint"), documented);
     }
 
     // YAML 1.1 reads an unquoted on/off as a boolean

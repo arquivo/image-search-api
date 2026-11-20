@@ -242,12 +242,7 @@ public class ImageSearchServlet extends HttpServlet {
         String requestedCollection = request.getParameter("collection");
         parseCollectionFilter(requestedCollection, fqStrings);
 
-        /*Process operators such as site: type: and site: inside the q parameter*/
-        /*Should we allow people to use those operators when calling the api e.g.
-         * /imagesearch?q=sapo%20site:sapo.pt%20type:jpeg instead of
-         * /imagesearch?q=sapo&siteSearch=sapo.pt&type=jpeg */
-        q = checkSpecialOperators(q, fqStrings);
-        q = checkSortOperator(q, sortStrings);
+        parseSort(request.getParameter("sort"), sortStrings);
         //Pretty print in output message
         String prettyPrintParameter = request.getParameter("prettyPrint");
         boolean prettyOutput = false;
@@ -268,11 +263,14 @@ public class ImageSearchServlet extends HttpServlet {
             solrQuery.set("shards.tolerant", "true");
             solrQuery.set("timeAllowed", timeAllowedMs);
 
+            // q is only the text to search: uf=-* makes Solr search any field:value in it as text, instead of
+            // querying that field. Without text, q.alt matches every image the filters allow.
             if (q.trim().isEmpty()) {
-                q = "*:*";
+                solrQuery.set("q.alt", "*:*");
+            } else {
+                solrQuery.setQuery(q);
             }
-
-            solrQuery.setQuery(q);
+            solrQuery.set("uf", "-*");
             LOG.debug("FilterQuery Strings:" + fqStrings);
 
             for (String fq : fqStrings) {
@@ -597,66 +595,21 @@ public class ImageSearchServlet extends HttpServlet {
     /************************************************************/
 
 
-    private String checkSpecialOperators(String q, ArrayList<String> fqStrings) {
-        LOG.debug("checking special operators");
-        if (q.contains("site:") || q.contains("type:") || q.contains("safe:") || q.contains("size:")) { /*query has a special operator we need to deal with it*/
-            LOG.debug("found special operator");
-            String[] words = q.split(" ");
-            ArrayList<String> cleanWords = new ArrayList<>();
-            for (String word : words) {
-                if (word.toLowerCase().startsWith("site:")) {
-                    LOG.debug("found site:");
-                    // parseSiteFilter escapes the domains itself, keeping the * wildcard
-                    parseSiteFilter(word.substring("site:".length()), fqStrings);
-                } else if (word.toLowerCase().startsWith("type:")) {
-                    LOG.debug("found type:");
-                    String typeWord = word.replace("type:", "");
-                    parseMimeType(typeWord, fqStrings);
-                } else if (word.toLowerCase().startsWith("safe:")) {
-                    LOG.debug("found safe:");
-                    String safeWord = word.replace("safe:", "");
-
-                    if (safeWord.equalsIgnoreCase("off") || safeWord.equalsIgnoreCase("on")) {
-                        removeMatchingFqString("safe", fqStrings);
-                    }
-
-                    parseSafeSearch(safeWord, fqStrings);
-                } else if (word.toLowerCase().startsWith("size:")) {
-                    LOG.debug("found size:");
-                    String sizeWord = word.replace("size:", "").toLowerCase();
-                    parseSizes(sizeWord, fqStrings);
-                } else {
-                    LOG.debug(" found clean word");
-                    cleanWords.add(word);
-                }
-            }
-            return String.join(" ", cleanWords);
-        } else return q;
-    }
-
     /**
-     * Turns each sort:&lt;expression&gt;,&lt;asc|desc&gt; word of the query into sort clauses, several separated by ";". The
+     * Turns the sort parameter, &lt;expression&gt;,&lt;asc|desc&gt; clauses separated by ";", into sort clauses. The
      * expression is a sortable field, or two sortable fields or numbers joined by one of ^ * / + - (pow, product, div,
-     * sum, sub), e.g. sort:imgWidth*imgHeight,desc. Invalid clauses are left out.
+     * sum, sub), e.g. imgWidth*imgHeight,desc. Invalid clauses are left out.
      */
-    private String checkSortOperator(String q, ArrayList<Map.Entry<String, SolrQuery.ORDER>> sortStrings) {
-        if (!q.contains("sort:")) {
-            return q;
+    private void parseSort(String sort, ArrayList<Map.Entry<String, SolrQuery.ORDER>> sortStrings) {
+        if (sort == null) {
+            return;
         }
-        ArrayList<String> cleanWords = new ArrayList<>();
-        for (String word : q.split(" ")) {
-            if (word.toLowerCase().startsWith("sort:")) {
-                for (String clause : word.substring("sort:".length()).split(";")) {
-                    Map.Entry<String, SolrQuery.ORDER> sort = parseSortClause(clause);
-                    if (sort != null) {
-                        sortStrings.add(sort);
-                    }
-                }
-            } else {
-                cleanWords.add(word);
+        for (String clause : sort.split(";")) {
+            Map.Entry<String, SolrQuery.ORDER> sortClause = parseSortClause(clause.trim());
+            if (sortClause != null) {
+                sortStrings.add(sortClause);
             }
         }
-        return String.join(" ", cleanWords);
     }
 
     static Map.Entry<String, SolrQuery.ORDER> parseSortClause(String clause) {
@@ -694,15 +647,6 @@ public class ImageSearchServlet extends HttpServlet {
         return SORTABLE_FIELDS.contains(field) && !field.equals("score") ? field : null;
     }
 
-
-    private void removeMatchingFqString(String field, ArrayList<String> fqStrings) {
-        for (int i = 0; i < fqStrings.size(); i++) {
-            if (fqStrings.get(i).startsWith(field)) {
-                fqStrings.remove(i);
-                i--;
-            }
-        }
-    }
 
     /**
      * Converting a string to an integer, if it is not possible, returns a defaultVal value
