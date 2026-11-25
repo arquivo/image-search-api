@@ -99,9 +99,17 @@ None of these interact with the Solr query itself — there's no explicit HTTP c
 using a dedicated SolrClient, independent of the one that serves `/imagesearch` queries. Returns
 `200 {"solr": "ok"}` when Solr is reachable, or `503 {"solr": "unreachable"}` otherwise. The ping's
 connection and socket timeouts are configurable via `healthcheck.solr.connectiontimeout.ms` (default
-2000) and `healthcheck.solr.sockettimeout.ms` (default 3000), so a Solr that's up but hanging still
-fails the check quickly. It's meant as a rolling-deploy gate for external tooling to poll, not as this
-container's own health check.
+2000) and `healthcheck.solr.sockettimeout.ms` (default 3000), or at runtime via the
+`HEALTHCHECK_SOLR_CONNECTIONTIMEOUT_MS`/`HEALTHCHECK_SOLR_SOCKETTIMEOUT_MS` environment variables
+(Spring's relaxed env binding), so a Solr that's up but hanging still fails the check quickly. It's
+mapped under the `/imagesearch` prefix the reverse proxy already forwards to this service, so it's
+public at `arquivo.pt/imagesearch/healthcheck` with no proxy changes needed. See
+[pwa-technologies#1614](https://github.com/arquivo/pwa-technologies/issues/1614).
+
+This is meant as a rolling-deploy gate (e.g. for the webapp's aggregate backend healthcheck,
+[pwa-technologies#1606](https://github.com/arquivo/pwa-technologies/issues/1606)), not as this
+container's own `HEALTHCHECK` — see the note in `docker-compose.yml` for why that one stays a
+shallow TCP check.
 
 ### Suggested docker-compose.yml for production
 
@@ -116,9 +124,10 @@ services:
     mem_limit: 4g
     restart: unless-stopped
     healthcheck:
-      # Bare TCP connect, not a full HTTP request - every path here is mapped to the
-      # search servlet, so any HTTP request would trigger a real Solr query. This only
-      # confirms Tomcat itself is up and accepting connections on 8080.
+      # Bare TCP connect, not a full HTTP request: this only confirms Tomcat itself is
+      # up and accepting connections on 8080, without exercising Solr. Every HTTP path
+      # here queries Solr (/imagesearch/healthcheck included), so a deep check risks
+      # cascading restarts if Solr is merely slow rather than broken.
       test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080' 2>/dev/null || exit 1"]
       interval: 30s
       timeout: 5s

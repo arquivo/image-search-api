@@ -48,7 +48,7 @@ class HealthCheckServletTest {
         servlet.doGet(request, response);
 
         verify(response).setStatus(HttpServletResponse.SC_OK);
-        assertEquals("{\"solr\":\"ok\"}", responseBody.toString().trim());
+        assertEquals("{\"solr\":\"ok\"}", responseBody.toString());
     }
 
     @Test
@@ -59,7 +59,7 @@ class HealthCheckServletTest {
         servlet.doGet(request, response);
 
         verify(response).setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
-        assertEquals("{\"solr\":\"unreachable\"}", responseBody.toString().trim());
+        assertEquals("{\"solr\":\"unreachable\"}", responseBody.toString());
     }
 
     @Test
@@ -69,6 +69,6 @@ class HealthCheckServletTest {
         servlet.doGet(request, response);
 
         verify(response).setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
-        assertEquals("{\"solr\":\"unreachable\"}", responseBody.toString().trim());
+        assertEquals("{\"solr\":\"unreachable\"}", responseBody.toString());
     }
 }

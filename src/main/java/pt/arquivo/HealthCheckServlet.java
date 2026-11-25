@@ -14,9 +14,9 @@ import java.io.IOException;
 import java.util.Collections;
 
 /**
- * Only checks Solr connectivity: it exists to gate rolling deploys of this service, pinging a
- * dedicated SolrClient (see ImageSearchApplication) that's independent of the one ImageSearchServlet
- * uses to serve queries.
+ * Only checks Solr connectivity: it exists to gate rolling deploys of this service (see
+ * pwa-technologies#1614), pinging a dedicated SolrClient (see ImageSearchApplication) that's
+ * independent of the one ImageSearchServlet uses to serve queries.
  */
 public class HealthCheckServlet extends HttpServlet {
 
@@ -39,11 +39,11 @@ public class HealthCheckServlet extends HttpServlet {
         try {
             solr.ping();
             response.setStatus(HttpServletResponse.SC_OK);
-            response.getWriter().println(GSON.toJson(Collections.singletonMap("solr", "ok")));
+            response.getWriter().print(GSON.toJson(Collections.singletonMap("solr", "ok")));
         } catch (SolrServerException | IOException e) {
             LOG.error("Solr healthcheck failed: ", e);
             response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
-            response.getWriter().println(GSON.toJson(Collections.singletonMap("solr", "unreachable")));
+            response.getWriter().print(GSON.toJson(Collections.singletonMap("solr", "unreachable")));
         }
     }
 }
